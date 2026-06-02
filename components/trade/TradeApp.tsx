@@ -107,6 +107,9 @@ export function TradeApp() {
   const pos = position as readonly [bigint, bigint, bigint, bigint] | undefined;
   const hasPosition = !!pos && pos[0] !== 0n;
   const maxLevNum = maxLev ? Number((maxLev as bigint) / WAD) : 10;
+  const levPresets = Array.from(
+    new Set([1, 2, 5, 10, maxLevNum].filter((v) => v >= 1 && v <= maxLevNum)),
+  ).sort((a, b) => a - b);
 
   function refetchAll() {
     refMark();
@@ -367,9 +370,25 @@ export function TradeApp() {
                   inputMode="decimal"
                   className="mb-3 w-full rounded-lg border border-line bg-bg px-3 py-2.5 font-mono text-sm outline-none focus:border-amber"
                 />
-                <div className="mb-1 flex justify-between text-xs text-ink-dim">
+                <div className="mb-1.5 flex justify-between text-xs text-ink-dim">
                   <span>Leverage</span>
                   <span className="font-mono text-amber">{leverage}×</span>
+                </div>
+                <div className="mb-2 flex gap-1.5">
+                  {levPresets.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setLeverage(v)}
+                      className={`flex-1 rounded-lg border py-1.5 text-xs font-mono transition ${
+                        leverage === v
+                          ? "border-amber bg-amber/10 text-amber"
+                          : "border-line text-ink-soft hover:border-ink-dim"
+                      }`}
+                    >
+                      {v}×
+                    </button>
+                  ))}
                 </div>
                 <input
                   type="range"
