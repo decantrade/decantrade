@@ -21,8 +21,15 @@ import {
   perpMarketAbi,
   type MarketKey,
 } from "@/lib/decant";
+import dynamic from "next/dynamic";
+import { WALLETCONNECT_PROJECT_ID } from "@/lib/wagmi";
 import { PriceChart } from "./PriceChart";
 import { CreateMarket } from "./CreateMarket";
+
+// Client-only so the WalletConnect SDK stays out of the server worker bundle.
+const WalletConnectOption = dynamic(() => import("./WalletConnectOption"), {
+  ssr: false,
+});
 
 const WAD = 10n ** 18n;
 
@@ -539,6 +546,9 @@ function ConnectButton() {
       </button>
     );
   }
+  // WalletConnect is registered lazily on the client, so it may already be in
+  // `connectors` after first use — dedupe to avoid showing it twice.
+  const builtinConnectors = connectors.filter((c) => c.id !== "walletConnect");
   return (
     <div className="relative">
       <button
@@ -550,7 +560,7 @@ function ConnectButton() {
       </button>
       {open && (
         <div className="absolute right-0 z-10 mt-2 w-48 rounded-lg border border-line bg-panel p-1 shadow-xl">
-          {connectors.map((c) => (
+          {builtinConnectors.map((c) => (
             <button
               key={c.uid}
               onClick={() => {
@@ -562,6 +572,12 @@ function ConnectButton() {
               {c.name}
             </button>
           ))}
+          {WALLETCONNECT_PROJECT_ID && (
+            <WalletConnectOption
+              onSelect={() => setOpen(false)}
+              className="block w-full rounded px-3 py-2 text-left text-sm text-ink-soft hover:bg-bg-soft hover:text-ink"
+            />
+          )}
         </div>
       )}
     </div>
