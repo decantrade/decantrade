@@ -10,6 +10,7 @@ import {
   normalizeHandle,
 } from "@/lib/referral";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
+import { sendWaitlistConfirmation } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -197,6 +198,12 @@ export async function POST(request: Request) {
   const id = (inserted[0] as { id: number }).id;
   const codes = await mintCodes(id);
   const { position, total } = await positionOf(id);
+
+  // Confirmation email (email signups only). No-op without RESEND_API_KEY and
+  // never throws, so delivery problems can't fail the signup.
+  if (email) {
+    await sendWaitlistConfirmation({ to: email, position, codes });
+  }
 
   return NextResponse.json({ ok: true, already: false, position, total, codes });
 }

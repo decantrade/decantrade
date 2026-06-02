@@ -13,7 +13,8 @@
   },
   // On Workers we use the Neon HTTP driver (TCP sockets aren't available).
   "vars": {
-    "DB_DRIVER": "neon"
+    "DB_DRIVER": "neon",
+    "RESEND_FROM": "Decant <noreply@decantrade.com>"
   },
   // Custom domains (zone must live in the same Cloudflare account).
   "routes": [
