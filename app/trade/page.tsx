@@ -8,6 +8,7 @@ import { TradeApp } from "@/components/trade/TradeApp";
 const MOBILE_LINKS: MobileNavLink[] = [
   { label: "Home", href: "/", icon: "home" },
   { label: "How it works", href: "/#how", icon: "how" },
+  { label: "Docs", href: "/docs", icon: "docs" },
   { label: "FAQ", href: "/#faq", icon: "faq" },
   { label: "Reserve spot", href: "/#waitlist", icon: "reserve", primary: true },
 ];

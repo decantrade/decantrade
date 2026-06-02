@@ -143,3 +143,25 @@ input:focus {
   letter-spacing: 0.15em;
   margin-bottom: 28px;
 }
+.prose-legal h3 {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 22px;
+  margin-bottom: 8px;
+}
+.prose-legal code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--color-amber);
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 1px 5px;
+  word-break: break-all;
+}
+.prose-legal ol {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  list-style: decimal;
+}
