@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
 import { Reveal } from "./Reveal";
 import {
@@ -35,7 +35,28 @@ const REASONS: Record<string, string> = {
   bad_signature: "Signature could not be verified.",
   already_joined: "You're already on the list.",
   rate_limited: "Too many attempts. Wait a minute and try again.",
+  captcha_failed: "Captcha check failed. Please try again.",
 };
+
+interface TurnstileApi {
+  render: (
+    el: HTMLElement,
+    opts: {
+      sitekey: string;
+      callback: (token: string) => void;
+      "error-callback"?: () => void;
+      "expired-callback"?: () => void;
+      theme?: "auto" | "light" | "dark";
+    },
+  ) => string;
+  reset: (id?: string) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
 
 function shorten(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -61,6 +82,11 @@ export function Waitlist() {
   const [xHandle, setXHandle] = useState("");
   // Honeypot: hidden from humans, left empty. Bots tend to fill it.
   const [company, setCompany] = useState("");
+  // Turnstile captcha — only active when the server reports a site key.
+  const [turnstileSitekey, setTurnstileSitekey] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +99,67 @@ export function Waitlist() {
   const { signMessageAsync } = useSignMessage();
 
   const formatValid = isValidCodeFormat(code);
+
+  // Discover whether captcha is configured (no-op if not).
+  useEffect(() => {
+    let active = true;
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d: { turnstileSitekey?: string | null }) => {
+        if (active && d.turnstileSitekey) setTurnstileSitekey(d.turnstileSitekey);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Load + render the Turnstile widget once the form is unlocked.
+  useEffect(() => {
+    if (!unlocked || !turnstileSitekey) return;
+    let cancelled = false;
+
+    const render = () => {
+      const ts = window.turnstile;
+      if (cancelled || !ts || !turnstileRef.current || widgetIdRef.current)
+        return;
+      widgetIdRef.current = ts.render(turnstileRef.current, {
+        sitekey: turnstileSitekey,
+        theme: "dark",
+        callback: (t) => setTurnstileToken(t),
+        "error-callback": () => setTurnstileToken(""),
+        "expired-callback": () => setTurnstileToken(""),
+      });
+    };
+
+    if (window.turnstile) {
+      render();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const SCRIPT_ID = "cf-turnstile";
+    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = SCRIPT_ID;
+      script.src =
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      document.head.appendChild(script);
+    }
+    const iv = setInterval(() => {
+      if (window.turnstile) {
+        clearInterval(iv);
+        render();
+      }
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [unlocked, turnstileSitekey]);
 
   // Validate against the server (debounced). Only the async result is written
   // to state, so there is no synchronous setState in the effect body.
@@ -132,11 +219,13 @@ export function Waitlist() {
     codeStatus = "checking";
   }
 
+  const captchaReady = !turnstileSitekey || !!turnstileToken;
+
   const canSubmit = useMemo(() => {
-    if (!unlocked || submitting) return false;
+    if (!unlocked || submitting || !captchaReady) return false;
     if (method === "email") return isValidEmail(email);
     return isConnected && !!address;
-  }, [unlocked, submitting, method, email, isConnected, address]);
+  }, [unlocked, submitting, captchaReady, method, email, isConnected, address]);
 
   const submit = useCallback(async () => {
     setError(null);
@@ -158,6 +247,7 @@ export function Waitlist() {
           message,
           xHandle: handle,
           company,
+          turnstileToken,
         };
       } else {
         payload = {
@@ -166,6 +256,7 @@ export function Waitlist() {
           email: email.trim(),
           xHandle: handle,
           company,
+          turnstileToken,
         };
       }
 
@@ -177,6 +268,11 @@ export function Waitlist() {
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(REASONS[data.reason] ?? "Something went wrong. Try again.");
+        // Tokens are single-use — reset so the user can retry.
+        if (turnstileSitekey) {
+          window.turnstile?.reset(widgetIdRef.current ?? undefined);
+          setTurnstileToken("");
+        }
         return;
       }
       setResult({
@@ -195,7 +291,17 @@ export function Waitlist() {
     } finally {
       setSubmitting(false);
     }
-  }, [method, address, code, email, xHandle, company, signMessageAsync]);
+  }, [
+    method,
+    address,
+    code,
+    email,
+    xHandle,
+    company,
+    turnstileToken,
+    turnstileSitekey,
+    signMessageAsync,
+  ]);
 
   const copy = useCallback((text: string) => {
     navigator.clipboard?.writeText(text).then(() => {
@@ -400,6 +506,10 @@ export function Waitlist() {
                         className="pointer-events-none absolute -left-[9999px] h-0 w-0 opacity-0"
                       />
                     </div>
+
+                    {turnstileSitekey && (
+                      <div ref={turnstileRef} className="mt-4" />
+                    )}
 
                     {error && (
                       <p className="mt-3 text-[12px] text-wine">{error}</p>
