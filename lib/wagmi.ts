@@ -1,13 +1,13 @@
 import { http, cookieStorage, createConfig, createStorage } from "wagmi";
-import { base } from "viem/chains";
+import { base, baseSepolia } from "viem/chains";
 import { coinbaseWallet, injected } from "wagmi/connectors";
 
-// Decant runs on Base. Waitlist only needs read + message signing (no gas),
-// so we ship gas-free connectors and skip WalletConnect (which needs a
-// projectId) for now — it can be added later.
+// Decant runs on Base. The marketing site targets Base mainnet; the live testnet
+// trading app (/trade) targets Base Sepolia. We ship gas-free connectors and skip
+// WalletConnect (which needs a projectId) for now — it can be added later.
 export function getConfig() {
   return createConfig({
-    chains: [base],
+    chains: [base, baseSepolia],
     connectors: [
       injected(),
       coinbaseWallet({ appName: "Decant", preference: "all" }),
@@ -16,6 +16,7 @@ export function getConfig() {
     ssr: true,
     transports: {
       [base.id]: http(),
+      [baseSepolia.id]: http(),
     },
   });
 }
