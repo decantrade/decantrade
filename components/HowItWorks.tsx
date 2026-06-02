@@ -19,7 +19,7 @@ const FEATURES = [
   {
     tag: "04",
     title: "Oracle pricing",
-    body: "Chainlink feeds where they exist; a Uniswap V3 TWAP fallback for long-tail tokens. Marks are derived on-chain, not from a centralized server.",
+    body: "Pyth feeds where they exist; a Uniswap V3 TWAP fallback for long-tail tokens. Marks are derived on-chain, not from a centralized server.",
   },
   {
     tag: "05",

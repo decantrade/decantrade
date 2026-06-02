@@ -34,6 +34,12 @@ export function Header() {
             Base · Testnet
           </span>
           <a
+            href="/trade"
+            className="hidden text-xs uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-amber sm:inline-block"
+          >
+            Trade ↗
+          </a>
+          <a
             href="#waitlist"
             className="rounded-sm border border-amber bg-amber px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-black transition-opacity hover:opacity-90"
           >
