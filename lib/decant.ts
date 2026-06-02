@@ -163,3 +163,80 @@ export const perpMarketAbi = [
     outputs: [],
   },
 ] as const;
+
+// MarketFactory — permissionless launcher (createPythMarket / createTwapMarket).
+export const factoryAbi = [
+  {
+    type: "function",
+    name: "allMarketsLength",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "minBaseReserve",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "marketForKey",
+    stateMutability: "view",
+    inputs: [{ name: "key", type: "bytes32" }],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
+    name: "createPythMarket",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "priceId", type: "bytes32" },
+      { name: "baseReserve", type: "uint256" },
+      { name: "quoteReserve", type: "uint256" },
+    ],
+    outputs: [{ name: "market", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "createTwapMarket",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "pool", type: "address" },
+      { name: "baseToken", type: "address" },
+      { name: "twapWindow", type: "uint32" },
+      { name: "baseReserve", type: "uint256" },
+      { name: "quoteReserve", type: "uint256" },
+    ],
+    outputs: [{ name: "market", type: "address" }],
+  },
+  {
+    type: "event",
+    name: "MarketCreated",
+    inputs: [
+      { name: "market", type: "address", indexed: true },
+      { name: "oracle", type: "address", indexed: true },
+      { name: "creator", type: "address", indexed: true },
+      { name: "kind", type: "uint8", indexed: false },
+      { name: "key", type: "bytes32", indexed: false },
+      { name: "baseReserve", type: "uint256", indexed: false },
+      { name: "quoteReserve", type: "uint256", indexed: false },
+    ],
+  },
+] as const;
+
+// Curated Pyth price-feed IDs (chain-agnostic). ETH/BTC/SOL already have live
+// markets; the rest are offered as ready-to-launch presets.
+export type PythFeed = { symbol: string; label: string; priceId: `0x${string}` };
+
+export const PYTH_FEEDS: PythFeed[] = [
+  { symbol: "ETH", label: "ETH / USD", priceId: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace" },
+  { symbol: "BTC", label: "BTC / USD", priceId: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43" },
+  { symbol: "SOL", label: "SOL / USD", priceId: "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d" },
+  { symbol: "LINK", label: "LINK / USD", priceId: "0x8ac0c70fff57e9aefdf5edf44b51d62c2d433653cbb2cf5cc06bb115af04d221" },
+  { symbol: "ARB", label: "ARB / USD", priceId: "0x3fa4252848f9f0a1480be62745a4629d9eb1322aebab8a791e344b3b9c1adcf5" },
+  { symbol: "DOGE", label: "DOGE / USD", priceId: "0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c" },
+  { symbol: "AVAX", label: "AVAX / USD", priceId: "0x93da3352f9f1d105fdfe4971cfa80e9dd777bfc5d0f683ebb6e1294b92137bb7" },
+  { symbol: "BNB", label: "BNB / USD", priceId: "0x2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f" },
+];

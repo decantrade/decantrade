@@ -22,6 +22,7 @@ import {
   type MarketKey,
 } from "@/lib/decant";
 import { PriceChart } from "./PriceChart";
+import { CreateMarket } from "./CreateMarket";
 
 const WAD = 10n ** 18n;
 
@@ -479,6 +480,8 @@ export function TradeApp() {
           </div>
         </div>
       )}
+
+      <CreateMarket />
 
       <p className="mt-8 text-center text-xs text-ink-dim">
         Testnet only · Base Sepolia · tokens have no value · not audited
