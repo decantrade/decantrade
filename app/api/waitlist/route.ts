@@ -9,6 +9,7 @@ import {
   normalizeCode,
   normalizeHandle,
 } from "@/lib/referral";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ interface JoinBody {
   xHandle?: string;
   signature?: string;
   message?: string;
+  // Honeypot: must stay empty. Bots that fill every field trip this.
+  company?: string;
 }
 
 function bad(reason: string, status = 400) {
@@ -64,11 +67,20 @@ async function mintCodes(ownerId: number): Promise<string[]> {
 }
 
 export async function POST(request: Request) {
+  if (!(await rateLimit(`join:${clientIp(request)}`, 10, 60_000))) {
+    return bad("rate_limited", 429);
+  }
+
   let body: JoinBody;
   try {
     body = (await request.json()) as JoinBody;
   } catch {
     return bad("bad_request");
+  }
+
+  // Honeypot — silently reject obvious bots without consuming a code.
+  if (typeof body.company === "string" && body.company.trim() !== "") {
+    return bad("rate_limited", 429);
   }
 
   const method = body.method;

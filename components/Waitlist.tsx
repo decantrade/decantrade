@@ -34,6 +34,7 @@ const REASONS: Record<string, string> = {
   invalid_handle: "That X handle looks off.",
   bad_signature: "Signature could not be verified.",
   already_joined: "You're already on the list.",
+  rate_limited: "Too many attempts. Wait a minute and try again.",
 };
 
 function shorten(addr: string) {
@@ -58,6 +59,8 @@ export function Waitlist() {
   const [method, setMethod] = useState<Method>("wallet");
   const [email, setEmail] = useState("");
   const [xHandle, setXHandle] = useState("");
+  // Honeypot: hidden from humans, left empty. Bots tend to fill it.
+  const [company, setCompany] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,9 +157,16 @@ export function Waitlist() {
           signature,
           message,
           xHandle: handle,
+          company,
         };
       } else {
-        payload = { method: "email", code, email: email.trim(), xHandle: handle };
+        payload = {
+          method: "email",
+          code,
+          email: email.trim(),
+          xHandle: handle,
+          company,
+        };
       }
 
       const res = await fetch("/api/waitlist", {
@@ -185,7 +195,7 @@ export function Waitlist() {
     } finally {
       setSubmitting(false);
     }
-  }, [method, address, code, email, xHandle, signMessageAsync]);
+  }, [method, address, code, email, xHandle, company, signMessageAsync]);
 
   const copy = useCallback((text: string) => {
     navigator.clipboard?.writeText(text).then(() => {
@@ -377,6 +387,17 @@ export function Waitlist() {
                         autoComplete="off"
                         spellCheck={false}
                         className="w-full rounded-sm border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-ink-dim/60 focus:border-amber/60"
+                      />
+                      {/* Honeypot — visually hidden, ignored by humans. */}
+                      <input
+                        type="text"
+                        name="company"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                        tabIndex={-1}
+                        autoComplete="off"
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -left-[9999px] h-0 w-0 opacity-0"
                       />
                     </div>
 
