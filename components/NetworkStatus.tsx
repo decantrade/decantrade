@@ -40,7 +40,7 @@ export function NetworkStatus() {
     },
     {
       label: "Max leverage",
-      value: "10×",
+      value: "50×",
       sub: "per-market configurable",
       accent: "text-ink",
     },
