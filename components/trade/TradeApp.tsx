@@ -110,6 +110,9 @@ export function TradeApp() {
   const levPresets = Array.from(
     new Set([1, 2, 5, 10, 25, maxLevNum].filter((v) => v >= 1 && v <= maxLevNum)),
   ).sort((a, b) => a - b);
+  // Clamp for display/submission: `leverage` state can briefly exceed maxLevNum
+  // before on-chain data loads or after switching to a lower-cap market.
+  const effLeverage = Math.min(Math.max(leverage, 1), maxLevNum);
 
   function refetchAll() {
     refMark();
@@ -183,7 +186,7 @@ export function TradeApp() {
         address: market.address,
         abi: perpMarketAbi as Abi,
         functionName: "openPosition",
-        args: [side === "long", parseUnits(margin || "0", 18), parseUnits(String(leverage), 18)],
+        args: [side === "long", parseUnits(margin || "0", 18), parseUnits(String(effLeverage), 18)],
       }),
     );
 
@@ -372,7 +375,7 @@ export function TradeApp() {
                 />
                 <div className="mb-1.5 flex justify-between text-xs text-ink-dim">
                   <span>Leverage</span>
-                  <span className="font-mono text-amber">{leverage}×</span>
+                  <span className="font-mono text-amber">{effLeverage}×</span>
                 </div>
                 <div className="mb-2 flex gap-1.5">
                   {levPresets.map((v) => (
@@ -381,7 +384,7 @@ export function TradeApp() {
                       type="button"
                       onClick={() => setLeverage(v)}
                       className={`flex-1 rounded-lg border py-1.5 text-xs font-mono transition ${
-                        leverage === v
+                        effLeverage === v
                           ? "border-amber bg-amber/10 text-amber"
                           : "border-line text-ink-soft hover:border-ink-dim"
                       }`}
@@ -395,14 +398,14 @@ export function TradeApp() {
                   min={1}
                   max={maxLevNum}
                   step={1}
-                  value={leverage}
+                  value={effLeverage}
                   onChange={(e) => setLeverage(Number(e.target.value))}
                   className="mb-3 w-full accent-amber"
                 />
                 <div className="mb-4 flex justify-between text-xs text-ink-dim">
                   <span>Notional</span>
                   <span className="font-mono">
-                    ${(Number(margin || "0") * leverage).toLocaleString()}
+                    ${(Number(margin || "0") * effLeverage).toLocaleString()}
                   </span>
                 </div>
                 <button
