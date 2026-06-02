@@ -43,8 +43,33 @@ export const metadata: Metadata = {
     title: "Decant | Permissionless Perp Markets on Base",
     description:
       "Launch a leveraged perpetual market for any Base token in 60 seconds.",
+    site: "@decanttrade",
     creator: "@decanttrade",
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://decantrade.com/#organization",
+      name: "Decant",
+      url: "https://decantrade.com",
+      logo: "https://decantrade.com/brand/decant-mark.png",
+      sameAs: [
+        "https://x.com/decanttrade",
+        "https://github.com/decent-trade/decantrade",
+      ],
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://decantrade.com/#website",
+      name: "Decant",
+      url: "https://decantrade.com",
+      publisher: { "@id": "https://decantrade.com/#organization" },
+    },
+  ],
 };
 
 export default async function RootLayout({
@@ -63,6 +88,10 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Providers initialState={initialState}>{children}</Providers>
       </body>
     </html>
