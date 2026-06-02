@@ -37,8 +37,14 @@ export function startApi() {
       if (path === "/events") {
         const where: string[] = [];
         const params: unknown[] = [];
-        if (market) (where.push("market = ?"), params.push(market));
-        if (trader) (where.push("trader = ?"), params.push(trader.toLowerCase()));
+        if (market) {
+          where.push("market = ?");
+          params.push(market);
+        }
+        if (trader) {
+          where.push("trader = ?");
+          params.push(trader.toLowerCase());
+        }
         const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
         params.push(limit);
         return send(

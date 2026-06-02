@@ -2,7 +2,6 @@ import type { DecantPublicClient, DecantWalletClient, DecantAccount } from "./cl
 import { config, perpMarketAbi, type MarketCfg } from "./config.js";
 import { getOpenTraders } from "./db.js";
 
-const WAD = 10n ** 18n;
 const maintenanceCache = new Map<string, bigint>();
 
 async function maintenance(client: DecantPublicClient, market: MarketCfg): Promise<bigint> {
