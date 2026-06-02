@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Trade · Decant testnet",
   description:
     "Trade perpetual futures on the Decant testnet app — ETH/USD and BTC/USD vAMM markets on Base Sepolia.",
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 export default function TradePage() {
