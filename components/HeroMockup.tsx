@@ -160,14 +160,16 @@ export function HeroMockup() {
             Short
           </span>
         </div>
-      </div>
 
-      {/* floating permissionless badge */}
-      <div className="absolute -bottom-4 -left-4 flex items-center gap-2 rounded-sm border border-amber/50 bg-bg px-3 py-2 shadow-xl shadow-black/50">
-        <span className="text-amber">+</span>
-        <span className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-          Launch any market
-        </span>
+        {/* permissionless footer */}
+        <div className="flex items-center justify-between border-t border-line bg-bg-soft px-4 py-2.5">
+          <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+            <span className="text-amber">+</span> Launch any market
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+            permissionless
+          </span>
+        </div>
       </div>
     </div>
   );
