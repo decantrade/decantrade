@@ -8,7 +8,7 @@ export const ADDRESSES = {
   factory: "0xFdcaF774A34E6a457A43402762727432884e1403",
 } as const;
 
-export type MarketKey = "ETH" | "BTC";
+export type MarketKey = "ETH" | "BTC" | "SOL";
 
 export const MARKETS: Record<
   MarketKey,
@@ -23,6 +23,11 @@ export const MARKETS: Record<
     label: "BTC / USD",
     symbol: "BTC",
     address: "0x1D482BcEfe1a4ECBa59662b76D1265DfCa2A94b1",
+  },
+  SOL: {
+    label: "SOL / USD",
+    symbol: "SOL",
+    address: "0xFb9a9df405Ffd8BAa9dAd9CC02946CDEFb2e34a7",
   },
 };
 

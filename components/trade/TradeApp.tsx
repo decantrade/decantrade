@@ -21,6 +21,7 @@ import {
   perpMarketAbi,
   type MarketKey,
 } from "@/lib/decant";
+import { PriceChart } from "./PriceChart";
 
 const WAD = 10n ** 18n;
 
@@ -229,6 +230,9 @@ export function TradeApp() {
           </button>
         ))}
       </div>
+
+      {/* Price chart */}
+      <PriceChart marketKey={marketKey} />
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
