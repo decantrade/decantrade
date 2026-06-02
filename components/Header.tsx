@@ -35,7 +35,7 @@ export function Header() {
           </span>
           <a
             href="/trade"
-            className="hidden text-xs uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-amber sm:inline-block"
+            className="text-xs uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-amber"
           >
             Trade ↗
           </a>
