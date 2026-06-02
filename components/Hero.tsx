@@ -2,7 +2,7 @@ import { Reveal } from "./Reveal";
 
 const STATS = [
   { label: "Status", value: "testnet" },
-  { label: "Leverage", value: "up to 10×" },
+  { label: "Leverage", value: "up to 50×" },
   { label: "Oracle", value: "Pyth + TWAP" },
   { label: "Chain", value: "Base · 8453" },
 ];
