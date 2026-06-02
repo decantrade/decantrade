@@ -7,6 +7,7 @@ const SOCIALS = [
 ];
 
 const LEGAL = [
+  { label: "Docs", href: "/docs" },
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
   { label: "Risk", href: "/risk" },

@@ -22,6 +22,7 @@ import {
   type MarketKey,
 } from "@/lib/decant";
 import { PriceChart } from "./PriceChart";
+import { CreateMarket } from "./CreateMarket";
 
 const WAD = 10n ** 18n;
 
@@ -57,6 +58,7 @@ export function TradeApp() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [depositAmt, setDepositAmt] = useState("1000");
+  const [withdrawAmt, setWithdrawAmt] = useState("");
   const [margin, setMargin] = useState("100");
   const [leverage, setLeverage] = useState(5);
   const [side, setSide] = useState<"long" | "short">("long");
@@ -149,6 +151,17 @@ export function TradeApp() {
   const needsApproval =
     depositWad > 0n && allowance !== undefined && (allowance as bigint) < depositWad;
 
+  let withdrawWad = 0n;
+  try {
+    withdrawWad = parseUnits(withdrawAmt || "0", USDC_DECIMALS);
+  } catch {
+    withdrawWad = 0n;
+  }
+  // freeCollateral is WAD (1e18); withdraw() takes token-decimal units.
+  const freeCollUnits =
+    freeColl !== undefined ? (freeColl as bigint) / 10n ** BigInt(18 - USDC_DECIMALS) : 0n;
+  const overWithdraw = withdrawWad > freeCollUnits;
+
   // ----- actions -----
   const mint = () =>
     run("mint", () =>
@@ -177,6 +190,16 @@ export function TradeApp() {
         abi: perpMarketAbi as Abi,
         functionName: "deposit",
         args: [depositWad],
+      }),
+    );
+
+  const withdraw = () =>
+    run("withdraw", () =>
+      writeContractAsync({
+        address: market.address,
+        abi: perpMarketAbi as Abi,
+        functionName: "withdraw",
+        args: [withdrawWad],
       }),
     );
 
@@ -308,6 +331,41 @@ export function TradeApp() {
                 {busy === "deposit" ? "Depositing…" : "Deposit"}
               </button>
             )}
+
+            <div className="mt-5 border-t border-line-soft pt-4">
+              <div className="mb-1 flex items-center justify-between text-xs text-ink-dim">
+                <span>Withdraw (tUSDC)</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setWithdrawAmt(formatUnits(freeCollUnits, USDC_DECIMALS))
+                  }
+                  className="font-mono text-amber hover:opacity-80"
+                >
+                  Max ${fmtUsd(freeColl as bigint)}
+                </button>
+              </div>
+              <input
+                value={withdrawAmt}
+                onChange={(e) => setWithdrawAmt(e.target.value)}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="mb-3 w-full rounded-lg border border-line bg-bg px-3 py-2.5 font-mono text-sm outline-none focus:border-amber"
+              />
+              <button
+                onClick={withdraw}
+                disabled={
+                  !!busy || wrongNetwork || withdrawWad === 0n || overWithdraw
+                }
+                className="w-full rounded-lg border border-line px-4 py-2.5 text-sm text-ink-soft hover:border-amber hover:text-amber disabled:opacity-40"
+              >
+                {busy === "withdraw"
+                  ? "Withdrawing…"
+                  : overWithdraw
+                    ? "Exceeds free collateral"
+                    : "Withdraw"}
+              </button>
+            </div>
           </div>
 
           {/* Trade / Position */}
@@ -422,6 +480,8 @@ export function TradeApp() {
           </div>
         </div>
       )}
+
+      <CreateMarket />
 
       <p className="mt-8 text-center text-xs text-ink-dim">
         Testnet only · Base Sepolia · tokens have no value · not audited

@@ -4,6 +4,7 @@ import { MobileNav, type MobileNavLink } from "./MobileNav";
 const NAV = [
   { label: "How it works", href: "#how" },
   { label: "Network", href: "#network" },
+  { label: "Docs", href: "/docs" },
   { label: "FAQ", href: "#faq" },
 ];
 
@@ -11,6 +12,7 @@ const MOBILE_LINKS: MobileNavLink[] = [
   { label: "How it works", href: "#how", icon: "how" },
   { label: "Network", href: "#network", icon: "network" },
   { label: "FAQ", href: "#faq", icon: "faq" },
+  { label: "Docs", href: "/docs", icon: "docs" },
   { label: "Trade", href: "/trade", icon: "trade" },
   { label: "Reserve spot", href: "#waitlist", icon: "reserve", primary: true },
 ];
