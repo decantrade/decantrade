@@ -30,6 +30,7 @@ This is the **landing + waitlist** application:
 - **Invite-gated waitlist** — the form stays locked until a valid referral code is entered.
 - **Referral mechanics** — every signup mints 3 fresh invite codes (3 uses each) so access spreads virally. Seed codes are issued with 100 uses each.
 - **Two join methods** — connect a Base wallet and sign a message, or join with email. Optional X handle.
+- **Confirmation email** — email signups get a queue-position + invite-codes email via Resend (optional; skipped when no API key is configured).
 - **Anti-bot** — per-IP, database-backed rate limiting plus a honeypot field on the public endpoints.
 - **Admin dashboard** — `/admin`, gated by a server-side token, with CSV export of all signups.
 - **SEO** — generated `robots.txt` and `sitemap.xml`; the admin route is `noindex`.
@@ -123,6 +124,8 @@ Open [http://localhost:3000](http://localhost:3000). Paste one of the seed codes
 | `DATABASE_URL` | `.dev.vars` / Worker secret | Postgres connection string. SSL is auto-enabled for Neon/Supabase. |
 | `DB_DRIVER`    | `wrangler.jsonc` vars       | Set to `neon` on Workers to use the HTTP driver.               |
 | `ADMIN_TOKEN`  | `.dev.vars` / Worker secret | Token required to access `/admin` and `/api/admin/*`.          |
+| `RESEND_API_KEY` | (optional) `.dev.vars` / Worker secret | Enables waitlist confirmation emails via [Resend](https://resend.com). Absent → email is skipped. |
+| `RESEND_FROM`  | (optional) var              | Sender address, e.g. `Decant <noreply@decantrade.com>` (domain must be verified in Resend). |
 | `SEED_COUNT`   | (optional, `db:init`)       | Number of seed codes to create. Default `12`.                  |
 | `SEED_MAX_USES`| (optional, `db:init`)       | Uses per seed code. Default `100`.                             |
 
