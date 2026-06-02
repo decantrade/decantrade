@@ -51,6 +51,14 @@ async function main() {
     )
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS decant_rate_limit (
+      bucket     TEXT PRIMARY KEY,
+      count      INTEGER NOT NULL DEFAULT 0,
+      expires_at TIMESTAMPTZ NOT NULL
+    )
+  `;
+
   const existing = await sql`
     SELECT code FROM decant_referral_codes WHERE is_seed = true ORDER BY created_at LIMIT 100
   `;

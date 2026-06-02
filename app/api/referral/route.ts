@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { isValidCodeFormat, normalizeCode } from "@/lib/referral";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!(await rateLimit(`ref:${clientIp(request)}`, 60, 60_000))) {
+    return NextResponse.json(
+      { valid: false, reason: "rate_limited" },
+      { status: 429 },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

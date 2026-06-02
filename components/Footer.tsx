@@ -1,10 +1,15 @@
+import Link from "next/link";
 import { Logo } from "./Logo";
 
 const SOCIALS = [
   { label: "X", href: "https://x.com/decanttrade" },
-  { label: "GitHub", href: "#" },
-  { label: "Discord", href: "#" },
-  { label: "Docs", href: "#" },
+  { label: "GitHub", href: "https://github.com/decent-trade/decantrade" },
+];
+
+const LEGAL = [
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Risk", href: "/risk" },
 ];
 
 export function Footer() {
@@ -24,17 +29,26 @@ export function Footer() {
             </div>
           </div>
 
-          <nav className="flex flex-wrap items-center gap-6">
+          <nav className="flex flex-wrap items-center gap-x-6 gap-y-3">
             {SOCIALS.map((s) => (
               <a
                 key={s.label}
                 href={s.href}
-                target={s.href.startsWith("http") ? "_blank" : undefined}
+                target="_blank"
                 rel="noreferrer"
                 className="text-xs uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-amber"
               >
                 {s.label}
               </a>
+            ))}
+            {LEGAL.map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                className="text-xs uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-amber"
+              >
+                {l.label}
+              </Link>
             ))}
           </nav>
         </div>

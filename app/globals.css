@@ -93,3 +93,53 @@ body {
 input:focus {
   outline: none;
 }
+
+/* legal / long-form pages */
+.prose-legal {
+  color: var(--color-ink-soft);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.prose-legal h1 {
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.prose-legal h2 {
+  color: var(--color-ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 36px;
+  margin-bottom: 10px;
+}
+.prose-legal p {
+  margin-bottom: 14px;
+}
+.prose-legal ul {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  list-style: disc;
+}
+.prose-legal li {
+  margin-bottom: 6px;
+}
+.prose-legal a {
+  color: var(--color-amber);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-legal strong {
+  color: var(--color-ink);
+}
+.prose-legal .updated {
+  color: var(--color-ink-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 28px;
+}
