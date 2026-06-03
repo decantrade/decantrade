@@ -215,6 +215,19 @@ forge test
 
 Deployed addresses are listed in [`contracts/deployments/base-sepolia.md`](contracts/deployments/base-sepolia.md).
 
+## Keeper & indexer
+
+Off-chain infrastructure that keeps the markets healthy:
+
+- [`keeper/`](keeper/) — a Node keeper + **SQLite event indexer** + read API. It backfills and
+  follows `PerpMarket` events, liquidates under-margined positions, and settles funding.
+- [`keeper-worker/`](keeper-worker/) — the same keeper logic packaged as a **Cloudflare Cron
+  Worker** (no always-on server). On a schedule it settles funding and liquidates under-margined
+  positions, tracking open positions in Workers KV. This is what runs against the live Base
+  Sepolia markets. See [`keeper-worker/README.md`](keeper-worker/README.md).
+
+Both calls (`settleFunding`, `liquidate`) are permissionless, so the keeper only needs gas.
+
 ## Disclaimer
 
 Decant is experimental software for trading derivatives. Perpetual futures use leverage and
