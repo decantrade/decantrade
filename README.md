@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/brand/decant-banner.png" alt="Decant — permissionless perpetual futures on Base" width="100%" />
+
 # Decant
 
 **Permissionless perpetual futures on [Base](https://base.org).**
@@ -14,6 +16,12 @@ Launch a leveraged market on any Base token in ~60 seconds — no listing commit
 > **Status:** Pre-launch. This repository contains the marketing landing page and the
 > invite-gated waitlist app. The trading protocol itself runs on a test network and uses
 > tokens with no monetary value. Nothing here is financial advice. See [/risk](https://decantrade.com/risk).
+
+## Screenshots
+
+| Landing | Trade terminal (testnet) |
+| :---: | :---: |
+| [![Decant landing page](docs/screenshots/landing.png)](https://decantrade.com) | [![Decant trade terminal](docs/screenshots/trade.png)](https://decantrade.com/trade) |
 
 ## What's in here
 
