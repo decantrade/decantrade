@@ -183,6 +183,30 @@ against your Neon database before the first deploy.
 | `pnpm cf:deploy`  | Build and deploy to Cloudflare Workers.              |
 | `pnpm cf:typegen` | Regenerate Cloudflare binding types.                 |
 
+## Smart contracts
+
+The on-chain perp engine lives in [`contracts/`](contracts/) — a [Foundry](https://book.getfoundry.sh)
+project deployed to **Base Sepolia** (chain `84532`).
+
+- `PerpMarket` — vAMM (`x·y=k`), isolated margin, funding, liquidation, and a per-market insurance fund.
+- `MarketFactory` — permissionless market creation: `createPythMarket` (curated feeds) and
+  `createTwapMarket` (any token with a Uniswap V3 pool, via a TWAP fallback oracle).
+- `PythOracle` + `UniswapV3TwapOracle` — index pricing.
+
+`forge-std` is vendored as a git submodule, so clone with submodules:
+
+```bash
+git clone --recurse-submodules <repo-url>
+# or, in an existing clone:
+git submodule update --init --recursive
+
+cd contracts
+forge build
+forge test
+```
+
+Deployed addresses are listed in [`contracts/deployments/base-sepolia.md`](contracts/deployments/base-sepolia.md).
+
 ## Disclaimer
 
 Decant is experimental software for trading derivatives. Perpetual futures use leverage and
