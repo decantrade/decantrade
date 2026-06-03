@@ -1,9 +1,10 @@
 import { Reveal } from "./Reveal";
+import { HeroMockup } from "./HeroMockup";
 
 const STATS = [
   { label: "Status", value: "testnet" },
-  { label: "Leverage", value: "up to 20×" },
-  { label: "Oracle", value: "Chainlink + TWAP" },
+  { label: "Leverage", value: "up to 50×" },
+  { label: "Oracle", value: "Pyth + TWAP" },
   { label: "Chain", value: "Base · 8453" },
 ];
 
@@ -11,7 +12,8 @@ export function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-line">
       <div className="grid-bg grid-bg-fade absolute inset-0" />
-      <div className="relative mx-auto max-w-6xl px-5 pb-20 pt-20 sm:pt-28">
+      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-20 sm:pt-28 lg:grid-cols-[1.05fr_0.95fr]">
+        <div>
         <Reveal>
           <div className="mb-7 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ink-dim">
             <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green" />
@@ -65,6 +67,11 @@ export function Hero() {
               invite-only · referral code required
             </span>
           </div>
+        </Reveal>
+        </div>
+
+        <Reveal delay={0.2} className="mt-2 sm:mt-6 lg:mt-0">
+          <HeroMockup />
         </Reveal>
       </div>
     </section>

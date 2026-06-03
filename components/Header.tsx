@@ -1,9 +1,25 @@
 import { Logo } from "./Logo";
+import { MobileNav, type MobileNavLink } from "./MobileNav";
 
 const NAV = [
   { label: "How it works", href: "#how" },
   { label: "Network", href: "#network" },
+  { label: "Docs", href: "/docs" },
   { label: "FAQ", href: "#faq" },
+];
+
+const MOBILE_LINKS: MobileNavLink[] = [
+  { label: "How it works", href: "#how", icon: "how" },
+  { label: "Network", href: "#network", icon: "network" },
+  { label: "FAQ", href: "#faq", icon: "faq" },
+  { label: "Docs", href: "/docs", icon: "docs" },
+  { label: "Trade", href: "/trade", icon: "trade" },
+  { label: "Reserve spot", href: "#waitlist", icon: "reserve", primary: true },
+];
+
+const MOBILE_SOCIALS: MobileNavLink[] = [
+  { label: "GitHub", href: "https://github.com/decent-trade/decantrade", external: true, icon: "github" },
+  { label: "X / Twitter", href: "https://x.com/decanttrade", external: true, icon: "x" },
 ];
 
 export function Header() {
@@ -29,10 +45,16 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
-          <span className="hidden rounded-full border border-amber/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-amber sm:inline-block">
+        <div className="hidden items-center gap-3 md:flex">
+          <span className="rounded-full border border-amber/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-amber">
             Base · Testnet
           </span>
+          <a
+            href="/trade"
+            className="text-xs uppercase tracking-[0.15em] text-ink-soft transition-colors hover:text-amber"
+          >
+            Trade ↗
+          </a>
           <a
             href="#waitlist"
             className="rounded-sm border border-amber bg-amber px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-black transition-opacity hover:opacity-90"
@@ -40,6 +62,8 @@ export function Header() {
             Reserve spot
           </a>
         </div>
+
+        <MobileNav links={MOBILE_LINKS} socials={MOBILE_SOCIALS} />
       </div>
     </header>
   );
