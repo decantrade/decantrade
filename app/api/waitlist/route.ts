@@ -11,6 +11,7 @@ import {
 } from "@/lib/referral";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { sendWaitlistConfirmation } from "@/lib/email";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,8 @@ interface JoinBody {
   message?: string;
   // Honeypot: must stay empty. Bots that fill every field trip this.
   company?: string;
+  // Cloudflare Turnstile token (when captcha is enabled).
+  turnstileToken?: string;
 }
 
 function bad(reason: string, status = 400) {
@@ -82,6 +85,11 @@ export async function POST(request: Request) {
   // Honeypot — silently reject obvious bots without consuming a code.
   if (typeof body.company === "string" && body.company.trim() !== "") {
     return bad("rate_limited", 429);
+  }
+
+  // Captcha (no-op unless TURNSTILE_SECRET is configured).
+  if (!(await verifyTurnstile(body.turnstileToken, clientIp(request)))) {
+    return bad("captcha_failed", 403);
   }
 
   const method = body.method;
