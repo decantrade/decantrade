@@ -1,20 +1,23 @@
 /**
- * Decant keeper — Cloudflare Cron Worker.
+ * Decant keeper + indexer — Cloudflare Cron Worker.
  *
- * Runs on a schedule (see wrangler.jsonc `triggers.crons`) and, for every
- * configured PerpMarket on Base Sepolia:
- *   - settles funding (`settleFunding`, permissionless) so the funding premium
- *     keeps accruing even when nobody is trading, and
- *   - liquidates under-margined positions (`liquidate(trader)`), earning the
- *     liquidation reward.
+ * On a schedule (see wrangler.jsonc `triggers.crons`) it:
+ *   1. indexes new PerpMarket events (deposits, trades, liquidations, funding)
+ *      into Workers KV — a capped recent-activity feed + a realized-PnL
+ *      leaderboard + totals,
+ *   2. settles funding (`settleFunding`, permissionless) on each market, and
+ *   3. liquidates under-margined positions (`liquidate(trader)`).
  *
- * Open positions are discovered by following PositionOpened / PositionClosed /
- * Liquidated logs. A small amount of state (the last scanned block + the set of
- * currently-open traders per market) is persisted in Workers KV so each run only
- * scans the newly produced blocks.
+ * State is persisted in Workers KV:
+ *   - `state`       — { cursor, open } : last scanned block + open-trader set/market
+ *   - `events`      — capped list of recent decoded events (newest first)
+ *   - `leaderboard` — per-trader { realizedPnl, volume, trades, liquidations }
+ *   - `stats`       — totals
+ * To respect KV's free-tier write budget, `state` is written every run but the
+ * indexer blobs are only written when new events are found.
  *
- * The signing key is provided as the Worker secret KEEPER_PRIVATE_KEY. With no
- * key set the worker runs read-only (it updates its index but sends no tx).
+ * The signing key is the Worker secret KEEPER_PRIVATE_KEY. With no key the
+ * worker still indexes but sends no tx (dry-run).
  */
 import {
   createPublicClient,
@@ -22,8 +25,11 @@ import {
   http,
   defineChain,
   formatEther,
+  formatUnits,
+  decodeEventLog,
   type Address,
   type Hex,
+  type Log,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
@@ -48,9 +54,27 @@ const DEFAULT_MARKETS: Market[] = [
 const DEFAULT_START_BLOCK = 42326000n;
 const LOG_CHUNK = 2000n; // public Base RPC caps eth_getLogs at 2000 blocks
 const MAX_CHUNKS_PER_RUN = 12; // bound subrequests per invocation
+const MAX_EVENTS = 1000; // cap the recent-activity feed kept in KV
+const MAX_TS_LOOKUPS = 25; // bound block-timestamp fetches per run
 
-// Minimal PerpMarket ABI: the events we follow + the views/calls the keeper uses.
+// PerpMarket ABI: events we index + views/calls the keeper uses.
 const perpMarketAbi = [
+  {
+    type: "event",
+    name: "Deposited",
+    inputs: [
+      { name: "trader", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "Withdrawn",
+    inputs: [
+      { name: "trader", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
   {
     type: "event",
     name: "PositionOpened",
@@ -84,6 +108,16 @@ const perpMarketAbi = [
     ],
   },
   {
+    type: "event",
+    name: "FundingSettled",
+    inputs: [
+      { name: "premiumFraction", type: "int256", indexed: false },
+      { name: "cumulative", type: "int256", indexed: false },
+      { name: "markPrice", type: "uint256", indexed: false },
+      { name: "indexPrice", type: "uint256", indexed: false },
+    ],
+  },
+  {
     type: "function",
     name: "marginRatio",
     stateMutability: "view",
@@ -107,11 +141,12 @@ const perpMarketAbi = [
   },
 ] as const;
 
-// The events the indexer follows (subset of the ABI above), for getLogs typing.
-const keeperEvents = perpMarketAbi.filter((x) => x.type === "event") as Extract<
-  (typeof perpMarketAbi)[number],
-  { type: "event" }
->[];
+// Events the indexer follows (excludes FundingSettled, which has no trader and
+// would flood the feed — funding is summarised elsewhere).
+const TRADER_EVENTS = ["Deposited", "Withdrawn", "PositionOpened", "PositionClosed", "Liquidated"];
+const keeperEvents = perpMarketAbi.filter(
+  (x) => x.type === "event" && TRADER_EVENTS.includes(x.name),
+) as Extract<(typeof perpMarketAbi)[number], { type: "event" }>[];
 
 function parseMarkets(env: Env): Market[] {
   const raw = env.MARKETS?.trim();
@@ -123,13 +158,46 @@ function parseMarkets(env: Env): Market[] {
 }
 
 function chainFor(rpcUrl: string) {
-  return defineChain({
-    ...baseSepolia,
-    rpcUrls: { default: { http: [rpcUrl] } },
-  });
+  return defineChain({ ...baseSepolia, rpcUrls: { default: { http: [rpcUrl] } } });
 }
 
+const wad = (v: bigint, dp = 4) => Number(formatUnits(v, 18)).toFixed(dp);
+// Collateral (deposit/withdraw) amounts are emitted in the token's own decimals.
+const COLLATERAL_DECIMALS = 6;
+const tok = (v: bigint, dp = 2) => Number(formatUnits(v, COLLATERAL_DECIMALS)).toFixed(dp);
+
 type OpenSets = Record<string, string[]>;
+type State = { cursor: string; open: OpenSets };
+
+type IndexedEvent = {
+  kind: string;
+  market: string;
+  trader: string;
+  block: number;
+  ts: number; // unix seconds (0 if unknown)
+  tx: string;
+  logIndex: number;
+  // human-readable, market-relevant fields (decimal strings)
+  side?: "long" | "short";
+  size?: string;
+  notional?: string;
+  margin?: string;
+  amount?: string;
+  pnl?: string;
+  reward?: string;
+};
+
+type LeaderRow = { realizedPnl: string; volume: string; trades: number; liquidations: number };
+type Leaderboard = Record<string, LeaderRow>;
+type Stats = {
+  deposits: number;
+  withdrawals: number;
+  opens: number;
+  closes: number;
+  liquidations: number;
+  volume: string;
+  updatedAt: number;
+};
 
 export type RunResult = {
   ok: boolean;
@@ -138,6 +206,7 @@ export type RunResult = {
   cursorAfter: string;
   caughtUp: boolean;
   open: Record<string, number>;
+  indexed: number;
   funding: { market: string; hash?: string; error?: string }[];
   liquidations: { market: string; trader: string; hash?: string; error?: string }[];
   dryRun: boolean;
@@ -145,34 +214,42 @@ export type RunResult = {
   balanceEth?: string;
 };
 
-export type RunOpts = {
-  /** Whether to send settleFunding txs this pass (liquidation always runs). */
-  settleFunding?: boolean;
-};
+export type RunOpts = { settleFunding?: boolean };
 
-/** One full keeper pass: index new logs, then settle funding + liquidate. */
+async function loadState(env: Env, startBlock: bigint, markets: Market[]): Promise<State> {
+  const raw = await env.KEEPER_KV.get("state");
+  if (raw) {
+    const s = JSON.parse(raw) as State;
+    for (const m of markets) s.open[m.key] ??= [];
+    return s;
+  }
+  // migrate from the older split keys if present
+  const oldCursor = await env.KEEPER_KV.get("cursor");
+  const oldOpen = await env.KEEPER_KV.get("open");
+  const open: OpenSets = oldOpen ? JSON.parse(oldOpen) : {};
+  for (const m of markets) open[m.key] ??= [];
+  return { cursor: oldCursor ?? (startBlock - 1n).toString(), open };
+}
+
+/** One full pass: index new logs into KV, then settle funding + liquidate. */
 export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> {
   const doFunding = opts.settleFunding ?? true;
   const rpcUrl = env.RPC_URL || "https://sepolia.base.org";
   const markets = parseMarkets(env);
   const chain = chainFor(rpcUrl);
   const client = createPublicClient({ chain, transport: http(rpcUrl) });
+  const byAddress = new Map<string, string>(markets.map((m) => [m.address.toLowerCase(), m.key]));
 
-  const byAddress = new Map<string, string>(
-    markets.map((m) => [m.address.toLowerCase(), m.key]),
-  );
-
-  // ---- load persisted state ----
   const startBlock = env.START_BLOCK ? BigInt(env.START_BLOCK) : DEFAULT_START_BLOCK;
-  const cursorRaw = await env.KEEPER_KV.get("cursor");
-  let cursor = cursorRaw ? BigInt(cursorRaw) : startBlock - 1n;
-  const open: OpenSets = JSON.parse((await env.KEEPER_KV.get("open")) || "{}");
-  for (const m of markets) open[m.key] ??= [];
+  const state = await loadState(env, startBlock, markets);
+  let cursor = BigInt(state.cursor);
+  const open = state.open;
 
   const head = await client.getBlockNumber();
   const cursorBefore = cursor;
 
   // ---- index new logs in bounded chunks ----
+  const newEvents: IndexedEvent[] = [];
   let from = cursor + 1n;
   let chunks = 0;
   while (from <= head && chunks < MAX_CHUNKS_PER_RUN) {
@@ -187,16 +264,16 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
       for (const log of logs) {
         const key = byAddress.get(log.address.toLowerCase());
         if (!key) continue;
-        const name = log.eventName;
-        const trader = ((log.args as { trader?: string }).trader || "").toLowerCase();
-        if (!trader) continue;
+        const ev = decodeIndexed(log, key);
+        if (!ev) continue;
+        // maintain open-trader set
         const set = new Set(open[key]);
-        if (name === "PositionOpened") set.add(trader);
-        else if (name === "PositionClosed" || name === "Liquidated") set.delete(trader);
+        if (ev.kind === "PositionOpened") set.add(ev.trader);
+        else if (ev.kind === "PositionClosed" || ev.kind === "Liquidated") set.delete(ev.trader);
         open[key] = [...set];
+        newEvents.push(ev);
       }
     } catch (e) {
-      // stop indexing on RPC error; cursor stays so we retry this range next run
       console.warn(`[keeper] getLogs ${from}-${to} failed: ${errMsg(e)}`);
       break;
     }
@@ -206,8 +283,24 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
   }
   const caughtUp = cursor >= head;
 
-  await env.KEEPER_KV.put("open", JSON.stringify(open));
-  await env.KEEPER_KV.put("cursor", cursor.toString());
+  // ---- resolve block timestamps for new events (bounded) ----
+  if (newEvents.length) {
+    const blocks = [...new Set(newEvents.map((e) => e.block))].slice(0, MAX_TS_LOOKUPS);
+    const tsByBlock = new Map<number, number>();
+    for (const b of blocks) {
+      try {
+        const blk = await client.getBlock({ blockNumber: BigInt(b) });
+        tsByBlock.set(b, Number(blk.timestamp));
+      } catch { /* leave ts=0 */ }
+    }
+    for (const e of newEvents) e.ts = tsByBlock.get(e.block) ?? 0;
+  }
+
+  // ---- persist state (every run) + indexer blobs (only when new) ----
+  await env.KEEPER_KV.put("state", JSON.stringify({ cursor: cursor.toString(), open }));
+  if (newEvents.length) {
+    await mergeIndex(env, newEvents);
+  }
 
   const result: RunResult = {
     ok: true,
@@ -216,20 +309,19 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
     cursorAfter: cursor.toString(),
     caughtUp,
     open: Object.fromEntries(markets.map((m) => [m.key, open[m.key].length])),
+    indexed: newEvents.length,
     funding: [],
     liquidations: [],
     dryRun: !env.KEEPER_PRIVATE_KEY,
   };
 
-  if (!env.KEEPER_PRIVATE_KEY) return result; // read-only / dry-run
+  if (!env.KEEPER_PRIVATE_KEY) return result;
 
   const account = privateKeyToAccount(env.KEEPER_PRIVATE_KEY as Hex);
   const wallet = createWalletClient({ account, chain, transport: http(rpcUrl) });
   result.keeper = account.address;
   result.balanceEth = formatEther(await client.getBalance({ address: account.address }));
 
-  // Manual nonce management: we don't wait for receipts, so assign sequential
-  // nonces and only advance on a successful broadcast.
   let nonce = await client.getTransactionCount({ address: account.address, blockTag: "pending" });
 
   // ---- liquidation sweep ----
@@ -259,7 +351,7 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
       } catch {
         continue;
       }
-      if (ratio >= mmr) continue; // healthy
+      if (ratio >= mmr) continue;
       try {
         const hash = await wallet.writeContract({
           address: m.address,
@@ -279,32 +371,141 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
 
   // ---- funding sweep ----
   if (doFunding)
-  for (const m of markets) {
-    try {
-      const hash = await wallet.writeContract({
-        address: m.address,
-        abi: perpMarketAbi,
-        functionName: "settleFunding",
-        nonce,
-      });
-      nonce++;
-      result.funding.push({ market: m.key, hash });
-      console.log(`[keeper] settleFunding ${m.key} → ${hash}`);
-    } catch (e) {
-      result.funding.push({ market: m.key, error: errMsg(e) });
+    for (const m of markets) {
+      try {
+        const hash = await wallet.writeContract({
+          address: m.address,
+          abi: perpMarketAbi,
+          functionName: "settleFunding",
+          nonce,
+        });
+        nonce++;
+        result.funding.push({ market: m.key, hash });
+        console.log(`[keeper] settleFunding ${m.key} → ${hash}`);
+      } catch (e) {
+        result.funding.push({ market: m.key, error: errMsg(e) });
+      }
+    }
+
+  return result;
+}
+
+function decodeIndexed(log: Log, market: string): IndexedEvent | null {
+  let decoded: { eventName: string; args: Record<string, unknown> };
+  try {
+    decoded = decodeEventLog({
+      abi: perpMarketAbi,
+      data: log.data,
+      topics: log.topics,
+    }) as unknown as { eventName: string; args: Record<string, unknown> };
+  } catch {
+    return null;
+  }
+  const a = decoded.args;
+  const trader = String(a.trader || "").toLowerCase();
+  if (!trader) return null;
+  const base: IndexedEvent = {
+    kind: decoded.eventName,
+    market,
+    trader,
+    block: Number(log.blockNumber ?? 0n),
+    ts: 0,
+    tx: log.transactionHash ?? "",
+    logIndex: Number(log.logIndex ?? 0),
+  };
+  switch (decoded.eventName) {
+    case "Deposited":
+    case "Withdrawn":
+      base.amount = tok(a.amount as bigint, 2);
+      break;
+    case "PositionOpened":
+      base.side = (a.isLong as boolean) ? "long" : "short";
+      base.margin = wad(a.margin as bigint, 2);
+      base.notional = wad(a.notional as bigint, 2);
+      base.size = wad((a.size as bigint) < 0n ? -(a.size as bigint) : (a.size as bigint), 4);
+      break;
+    case "PositionClosed":
+      base.pnl = wad(a.pnl as bigint, 2);
+      break;
+    case "Liquidated":
+      base.reward = wad(a.reward as bigint, 2);
+      break;
+  }
+  return base;
+}
+
+/** Merge new events into the KV feed + leaderboard + stats (dedup by tx:logIndex). */
+async function mergeIndex(env: Env, evs: IndexedEvent[]): Promise<void> {
+  const [feedRaw, lbRaw, statsRaw] = await Promise.all([
+    env.KEEPER_KV.get("events"),
+    env.KEEPER_KV.get("leaderboard"),
+    env.KEEPER_KV.get("stats"),
+  ]);
+  const feed: IndexedEvent[] = feedRaw ? JSON.parse(feedRaw) : [];
+  const lb: Leaderboard = lbRaw ? JSON.parse(lbRaw) : {};
+  const stats: Stats = statsRaw
+    ? JSON.parse(statsRaw)
+    : { deposits: 0, withdrawals: 0, opens: 0, closes: 0, liquidations: 0, volume: "0", updatedAt: 0 };
+
+  const seen = new Set(feed.map((e) => `${e.tx}:${e.logIndex}`));
+  let volume = parseFloat(stats.volume) || 0;
+
+  for (const e of evs) {
+    const id = `${e.tx}:${e.logIndex}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    feed.push(e);
+    const row = (lb[e.trader] ??= { realizedPnl: "0", volume: "0", trades: 0, liquidations: 0 });
+    switch (e.kind) {
+      case "Deposited":
+        stats.deposits++;
+        break;
+      case "Withdrawn":
+        stats.withdrawals++;
+        break;
+      case "PositionOpened":
+        stats.opens++;
+        row.trades++;
+        row.volume = (parseFloat(row.volume) + parseFloat(e.notional || "0")).toString();
+        volume += parseFloat(e.notional || "0");
+        break;
+      case "PositionClosed":
+        stats.closes++;
+        row.realizedPnl = (parseFloat(row.realizedPnl) + parseFloat(e.pnl || "0")).toString();
+        break;
+      case "Liquidated":
+        stats.liquidations++;
+        row.liquidations++;
+        break;
     }
   }
 
-  return result;
+  // newest first, capped
+  feed.sort((a, b) => b.block - a.block || b.logIndex - a.logIndex);
+  const capped = feed.slice(0, MAX_EVENTS);
+  stats.volume = volume.toString();
+  stats.updatedAt = Math.floor(Date.now() / 1000);
+
+  await Promise.all([
+    env.KEEPER_KV.put("events", JSON.stringify(capped)),
+    env.KEEPER_KV.put("leaderboard", JSON.stringify(lb)),
+    env.KEEPER_KV.put("stats", JSON.stringify(stats)),
+  ]);
 }
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message.split("\n")[0] : String(e);
 }
 
-export default {
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, OPTIONS",
+  "access-control-allow-headers": "content-type",
+};
+
+const worker = {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    // Liquidation checks run every minute (reads are free); only settle funding
+    // Liquidation checks run every tick (reads are free); only settle funding
     // roughly every 10 minutes to conserve the keeper's gas balance.
     const minute = new Date(event.scheduledTime).getUTCMinutes();
     const settleFunding = minute % 10 === 0;
@@ -313,7 +514,8 @@ export default {
         .then((r) =>
           console.log(
             `[keeper] run: head=${r.head} cursor=${r.cursorAfter} caughtUp=${r.caughtUp} ` +
-              `open=${JSON.stringify(r.open)} funding=${r.funding.length} liq=${r.liquidations.length} dryRun=${r.dryRun}`,
+              `indexed=${r.indexed} open=${JSON.stringify(r.open)} funding=${r.funding.length} ` +
+              `liq=${r.liquidations.length} dryRun=${r.dryRun}`,
           ),
         )
         .catch((e) => console.error(`[keeper] run failed: ${errMsg(e)}`)),
@@ -325,15 +527,17 @@ export default {
     const json = (body: unknown, status = 200) =>
       new Response(JSON.stringify(body, null, 2), {
         status,
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...CORS },
       });
+
+    if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+
+    const markets = parseMarkets(env);
 
     if (url.pathname === "/health") {
       const rpcUrl = env.RPC_URL || "https://sepolia.base.org";
-      const markets = parseMarkets(env);
       const client = createPublicClient({ chain: chainFor(rpcUrl), transport: http(rpcUrl) });
-      const open: OpenSets = JSON.parse((await env.KEEPER_KV.get("open")) || "{}");
-      const cursor = (await env.KEEPER_KV.get("cursor")) || "unset";
+      const state = await loadState(env, DEFAULT_START_BLOCK, markets);
       let head = "?";
       let keeper: string | undefined;
       let balanceEth: string | undefined;
@@ -349,14 +553,48 @@ export default {
       }
       return json({
         ok: true,
-        cursor,
+        cursor: state.cursor,
         head,
         markets: markets.map((m) => m.key),
-        open: Object.fromEntries(markets.map((m) => [m.key, (open[m.key] || []).length])),
+        open: Object.fromEntries(markets.map((m) => [m.key, (state.open[m.key] || []).length])),
         keeper,
         balanceEth,
         dryRun: !env.KEEPER_PRIVATE_KEY,
       });
+    }
+
+    if (url.pathname === "/stats") {
+      const stats = JSON.parse((await env.KEEPER_KV.get("stats")) || "{}");
+      return json({ ok: true, stats });
+    }
+
+    if (url.pathname === "/activity" || url.pathname === "/trades") {
+      const feed: IndexedEvent[] = JSON.parse((await env.KEEPER_KV.get("events")) || "[]");
+      const trader = url.searchParams.get("trader")?.toLowerCase();
+      const market = url.searchParams.get("market");
+      const kind = url.searchParams.get("kind");
+      const limit = Math.min(Number(url.searchParams.get("limit") || 50), MAX_EVENTS);
+      let rows = feed;
+      if (trader) rows = rows.filter((e) => e.trader === trader);
+      if (market) rows = rows.filter((e) => e.market === market);
+      if (kind) rows = rows.filter((e) => e.kind === kind);
+      return json({ ok: true, count: rows.length, events: rows.slice(0, limit) });
+    }
+
+    if (url.pathname === "/leaderboard") {
+      const lb: Leaderboard = JSON.parse((await env.KEEPER_KV.get("leaderboard")) || "{}");
+      const sort = url.searchParams.get("sort") === "volume" ? "volume" : "realizedPnl";
+      const limit = Math.min(Number(url.searchParams.get("limit") || 20), 200);
+      const rows = Object.entries(lb)
+        .map(([trader, r]) => ({ trader, ...r }))
+        .sort((a, b) => parseFloat(b[sort]) - parseFloat(a[sort]))
+        .slice(0, limit);
+      return json({ ok: true, count: rows.length, leaderboard: rows });
+    }
+
+    if (url.pathname === "/positions") {
+      const state = await loadState(env, DEFAULT_START_BLOCK, markets);
+      return json({ ok: true, open: state.open });
     }
 
     // Manual trigger for testing/ops: GET /run?key=<RUN_TOKEN>
@@ -365,13 +603,18 @@ export default {
         return json({ ok: false, error: "unauthorized" }, 401);
       }
       try {
-        const r = await runOnce(env);
-        return json(r);
+        return json(await runOnce(env));
       } catch (e) {
         return json({ ok: false, error: errMsg(e) }, 500);
       }
     }
 
-    return json({ ok: true, service: "decant-keeper", routes: ["/health", "/run?key="] });
+    return json({
+      ok: true,
+      service: "decant-keeper",
+      routes: ["/health", "/stats", "/activity?trader=&market=&kind=&limit=", "/leaderboard?sort=&limit=", "/positions", "/run?key="],
+    });
   },
 };
+
+export default worker;

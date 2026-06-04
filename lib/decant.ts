@@ -33,6 +33,10 @@ export const MARKETS: Record<
 
 export const USDC_DECIMALS = 6;
 
+// Public keeper + indexer worker (activity feed, leaderboard). Overridable via env.
+export const KEEPER_API =
+  process.env.NEXT_PUBLIC_KEEPER_API || "https://decant-keeper.decantrade.workers.dev";
+
 // ----- ABIs (only the methods the UI uses) -----
 
 export const erc20Abi = [
