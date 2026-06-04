@@ -25,6 +25,7 @@ import dynamic from "next/dynamic";
 import { WALLETCONNECT_PROJECT_ID } from "@/lib/wagmi";
 import { PriceChart } from "./PriceChart";
 import { CreateMarket } from "./CreateMarket";
+import { History } from "./History";
 
 // Client-only so the WalletConnect SDK stays out of the server worker bundle.
 const WalletConnectOption = dynamic(() => import("./WalletConnectOption"), {
@@ -487,6 +488,8 @@ export function TradeApp() {
           </div>
         </div>
       )}
+
+      <History />
 
       <CreateMarket />
 
