@@ -37,11 +37,11 @@ const COLORS = {
 type CoinbaseCandle = [number, number, number, number, number, number]; // [time, low, high, open, close, volume]
 
 async function fetchCandles(product: string, granularity: number): Promise<CandlestickData[]> {
-  const res = await fetch(
-    `https://api.exchange.coinbase.com/products/${product}/candles?granularity=${granularity}`,
-  );
-  if (!res.ok) throw new Error(`Coinbase ${res.status}`);
-  const raw = (await res.json()) as CoinbaseCandle[];
+  // Fetched via our own edge route (server-side) so it works from regions where
+  // Coinbase's public API is geo-blocked; the route falls back to Binance.
+  const res = await fetch(`/api/candles?product=${product}&granularity=${granularity}`);
+  if (!res.ok) throw new Error(`candles ${res.status}`);
+  const { candles: raw } = (await res.json()) as { candles: CoinbaseCandle[] };
   return raw
     .map(([time, low, high, open, close]) => ({
       time: time as UTCTimestamp,
@@ -153,7 +153,7 @@ export function PriceChart({ marketKey }: { marketKey: MarketKey }) {
         )}
       </div>
       <p className="mt-2 text-right text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-        Spot reference · Coinbase
+        Spot reference · Coinbase / Binance
       </p>
     </div>
   );
