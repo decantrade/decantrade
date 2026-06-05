@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "./Logo";
 
 const SOCIALS = [
-  { label: "X", href: "https://x.com/decanttrade" },
+  { label: "X", href: "https://x.com/_decantrade" },
   { label: "GitHub", href: "https://github.com/decent-trade/decantrade" },
 ];
 

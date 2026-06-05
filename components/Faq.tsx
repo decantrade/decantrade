@@ -11,7 +11,7 @@ const FAQS = [
   },
   {
     q: "Why is the waitlist invite-only?",
-    a: "Early access is gated by referral code to keep the first cohort small and high-signal. Bring a code from an existing member, or grab one we drop on @decanttrade.",
+    a: "Early access is gated by referral code to keep the first cohort small and high-signal. Bring a code from an existing member, or grab one we drop on @_decantrade.",
   },
   {
     q: "What do I need to join?",

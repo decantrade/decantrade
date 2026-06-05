@@ -83,8 +83,8 @@ export default function PrivacyPage() {
       <h2>8. Contact</h2>
       <p>
         For privacy requests, reach us on X at{" "}
-        <a href="https://x.com/decanttrade" target="_blank" rel="noreferrer">
-          @decanttrade
+        <a href="https://x.com/_decantrade" target="_blank" rel="noreferrer">
+          @_decantrade
         </a>
         .
       </p>

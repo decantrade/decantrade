@@ -69,8 +69,8 @@ export default function RiskPage() {
       <h2>7. Questions</h2>
       <p>
         Reach us on X at{" "}
-        <a href="https://x.com/decanttrade" target="_blank" rel="noreferrer">
-          @decanttrade
+        <a href="https://x.com/_decantrade" target="_blank" rel="noreferrer">
+          @_decantrade
         </a>
         .
       </p>

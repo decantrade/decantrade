@@ -339,12 +339,12 @@ export function Waitlist() {
               <li className="flex gap-3">
                 <span className="text-amber">→</span> No code yet? Follow{" "}
                 <a
-                  href="https://x.com/decanttrade"
+                  href="https://x.com/_decantrade"
                   target="_blank"
                   rel="noreferrer"
                   className="text-amber underline-offset-4 hover:underline"
                 >
-                  @decanttrade
+                  @_decantrade
                 </a>
                 — we drop them on tweets.
               </li>

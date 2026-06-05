@@ -43,8 +43,8 @@ export const metadata: Metadata = {
     title: "Decant | Permissionless Perp Markets on Base",
     description:
       "Launch a leveraged perpetual market for any Base token in 60 seconds.",
-    site: "@decanttrade",
-    creator: "@decanttrade",
+    site: "@_decantrade",
+    creator: "@_decantrade",
   },
 };
 
@@ -58,7 +58,7 @@ const jsonLd = {
       url: "https://decantrade.com",
       logo: "https://decantrade.com/brand/decant-mark.png",
       sameAs: [
-        "https://x.com/decanttrade",
+        "https://x.com/_decantrade",
         "https://github.com/decent-trade/decantrade",
       ],
     },

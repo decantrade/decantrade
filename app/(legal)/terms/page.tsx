@@ -90,8 +90,8 @@ export default function TermsPage() {
       <h2>8. Contact</h2>
       <p>
         Questions about these Terms? Reach us on X at{" "}
-        <a href="https://x.com/decanttrade" target="_blank" rel="noreferrer">
-          @decanttrade
+        <a href="https://x.com/_decantrade" target="_blank" rel="noreferrer">
+          @_decantrade
         </a>
         .
       </p>
