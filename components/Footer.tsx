@@ -58,7 +58,22 @@ export function Footer() {
           <span className="uppercase tracking-[0.15em]">
             testnet · pre-audit · not real money
           </span>
-          <span>© {new Date().getFullYear()} Decant. Not financial advice.</span>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+            <span>
+              Built by{" "}
+              <a
+                href="https://x.com/avantisfi"
+                target="_blank"
+                rel="noreferrer"
+                className="text-ink-soft transition-colors hover:text-amber"
+              >
+                @avantisfi
+              </a>
+            </span>
+            <span>
+              © {new Date().getFullYear()} Decant. Not financial advice.
+            </span>
+          </div>
         </div>
       </div>
     </footer>
