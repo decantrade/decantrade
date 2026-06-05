@@ -33,7 +33,7 @@ function hexId(s: string): `0x${string}` | null {
   return /^0x[0-9a-fA-F]{64}$/.test(v) ? (v as `0x${string}`) : null;
 }
 
-export function CreateMarket() {
+export function CreateMarket({ locked = false }: { locked?: boolean }) {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const { connect, connectors } = useConnect();
@@ -89,6 +89,7 @@ export function CreateMarket() {
   const ready = kind === "pyth" ? pythReady : twapReady;
 
   async function launch() {
+    if (locked) return;
     if (!isConnected) {
       const c = connectors[0];
       if (c) connect({ connector: c });
@@ -328,16 +329,18 @@ export function CreateMarket() {
 
           <button
             onClick={launch}
-            disabled={busy || (isConnected && !wrongNetwork && !ready)}
+            disabled={busy || locked || (isConnected && !wrongNetwork && !ready)}
             className="mt-4 w-full rounded-lg bg-amber px-4 py-2.5 text-sm font-semibold text-bg disabled:opacity-40"
           >
             {busy
               ? "Launching…"
-              : !isConnected
-                ? "Connect wallet to launch"
-                : wrongNetwork
-                  ? "Switch to Base Sepolia"
-                  : "Launch market"}
+              : locked
+                ? "Join the waitlist to launch"
+                : !isConnected
+                  ? "Connect wallet to launch"
+                  : wrongNetwork
+                    ? "Switch to Base Sepolia"
+                    : "Launch market"}
           </button>
         </div>
       )}

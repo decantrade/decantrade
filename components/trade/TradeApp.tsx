@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { formatUnits, parseUnits, type Abi } from "viem";
 import {
   useAccount,
@@ -62,6 +64,20 @@ export function TradeApp() {
   const [marketKey, setMarketKey] = useState<MarketKey>("ETH");
   const market = MARKETS[marketKey];
   const wrongNetwork = isConnected && chainId !== DECANT_CHAIN.id;
+
+  // Testnet trading is a waitlist-member perk: only wallets that joined the
+  // waitlist can trade. `member` is undefined while loading.
+  const { data: member } = useQuery({
+    queryKey: ["waitlist-member", address],
+    enabled: isConnected && !!address,
+    staleTime: 60_000,
+    queryFn: async (): Promise<boolean | null> => {
+      const r = await fetch(`/api/waitlist/check?address=${address}`);
+      const d = (await r.json()) as { ok?: boolean; member?: boolean };
+      return d?.ok ? !!d.member : null;
+    },
+  });
+  const locked = isConnected && member === false;
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -293,6 +309,8 @@ export function TradeApp() {
         <div className="rounded-xl border border-line bg-panel p-8 text-center text-ink-soft">
           Connect a wallet to start trading on testnet.
         </div>
+      ) : locked ? (
+        <WaitlistGate address={address} />
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
           {/* Collateral */}
@@ -491,7 +509,7 @@ export function TradeApp() {
 
       <History />
 
-      <CreateMarket />
+      <CreateMarket locked={locked} />
 
       <p className="mt-8 text-center text-xs text-ink-dim">
         Testnet only · Base Sepolia · tokens have no value · not audited
@@ -530,6 +548,39 @@ function PosRow({
     <div className="flex items-center justify-between border-b border-line-soft py-2 text-sm last:border-0">
       <span className="text-ink-dim">{label}</span>
       <span className={`font-mono ${valueClass}`}>{value}</span>
+    </div>
+  );
+}
+
+function WaitlistGate({ address }: { address?: `0x${string}` }) {
+  return (
+    <div className="rounded-xl border border-amber/40 bg-amber/5 p-8 text-center">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-amber">
+        ── Waitlist only
+      </p>
+      <h2 className="mt-2 text-lg font-semibold tracking-tight">
+        Testnet trading is for waitlist members
+      </h2>
+      <p className="mx-auto mt-3 max-w-md text-sm text-ink-soft">
+        {address ? (
+          <>
+            <span className="font-mono text-ink">
+              {address.slice(0, 6)}…{address.slice(-4)}
+            </span>{" "}
+            isn&apos;t on the Decant waitlist yet.
+          </>
+        ) : (
+          <>This wallet isn&apos;t on the Decant waitlist yet.</>
+        )}{" "}
+        Join the waitlist with this wallet to unlock deposits, leverage and
+        market launches. Charts and prices stay open to everyone.
+      </p>
+      <Link
+        href="/#waitlist"
+        className="mt-5 inline-block rounded-lg bg-amber px-5 py-2.5 text-sm font-semibold text-bg hover:opacity-90"
+      >
+        Join the waitlist →
+      </Link>
     </div>
   );
 }
