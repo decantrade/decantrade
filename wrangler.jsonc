@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "decant",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // On Workers we use the Neon HTTP driver (TCP sockets aren't available).
+  "vars": {
+    "DB_DRIVER": "neon",
+    "RESEND_FROM": "Decant <noreply@decantrade.com>",
+    // Public Turnstile site key (safe to commit; the secret is a Worker secret).
+    "TURNSTILE_SITEKEY": "0x4AAAAAADd3L3fYtND7S5Cx"
+  },
+  // Custom domains (zone must live in the same Cloudflare account).
+  "routes": [
+    { "pattern": "decantrade.com", "custom_domain": true },
+    { "pattern": "www.decantrade.com", "custom_domain": true }
+  ]
+  // Provide the Postgres connection string as a secret:
+  //   wrangler secret put DATABASE_URL
+}

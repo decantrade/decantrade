@@ -1,0 +1,223 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {Test} from "forge-std/Test.sol";
+import {PerpMarket} from "../src/PerpMarket.sol";
+import {IERC20} from "../src/interfaces/IERC20.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
+import {MockOracle} from "../src/mocks/MockOracle.sol";
+
+contract PerpMarketTest is Test {
+    MockERC20 usdc;
+    MockOracle oracle;
+    PerpMarket market;
+
+    address alice = address(0xA11CE);
+    address bob = address(0xB0B);
+    address keeper = address(0xCAFE);
+
+    uint256 constant WAD = 1e18;
+
+    // ETH/USD market @ ~$3000: 1000 ETH virtual base, $3,000,000 virtual quote.
+    uint256 constant BASE_RESERVE = 1000e18;
+    uint256 constant QUOTE_RESERVE = 3_000_000e18;
+
+    function setUp() public {
+        usdc = new MockERC20("USD Coin", "USDC", 6);
+        oracle = new MockOracle(3000e18);
+        market = new PerpMarket(IERC20(address(usdc)), IOracle(address(oracle)), BASE_RESERVE, QUOTE_RESERVE);
+
+        _fund(alice, 1_000_000e6);
+        _fund(bob, 5_000_000e6);
+        _fund(keeper, 1_000e6);
+    }
+
+    function _fund(address who, uint256 amt6) internal {
+        usdc.mint(who, amt6);
+        vm.prank(who);
+        usdc.approve(address(market), type(uint256).max);
+    }
+
+    function _deposit(address who, uint256 amt6) internal {
+        vm.prank(who);
+        market.deposit(amt6);
+    }
+
+    // ---------------------------------------------------------
+    // Collateral
+    // ---------------------------------------------------------
+
+    function test_DepositAndWithdraw() public {
+        _deposit(alice, 100_000e6);
+        assertEq(market.freeCollateral(alice), 100_000e18, "free after deposit");
+
+        vm.prank(alice);
+        market.withdraw(40_000e6);
+        assertEq(market.freeCollateral(alice), 60_000e18, "free after withdraw");
+        assertEq(usdc.balanceOf(alice), 1_000_000e6 - 100_000e6 + 40_000e6, "token balance");
+    }
+
+    function test_WithdrawTooMuchReverts() public {
+        _deposit(alice, 10_000e6);
+        vm.prank(alice);
+        vm.expectRevert(bytes("INSUFFICIENT"));
+        market.withdraw(20_000e6);
+    }
+
+    // ---------------------------------------------------------
+    // Opening positions
+    // ---------------------------------------------------------
+
+    function test_OpenLongMovesMarkPriceUp() public {
+        _deposit(alice, 100_000e6);
+        uint256 markBefore = market.getMarkPrice();
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18); // 50k notional long
+
+        (int256 size, uint256 openNotional, uint256 margin,) = market.positions(alice);
+        assertGt(size, 0, "long size positive");
+        assertEq(openNotional, 50_000e18, "notional");
+        assertEq(margin, 10_000e18 - 50e18, "margin net of 0.1% fee");
+        assertGt(market.getMarkPrice(), markBefore, "mark up after long");
+        assertEq(market.freeCollateral(alice), 90_000e18, "margin locked");
+    }
+
+    function test_OpenShortMovesMarkPriceDown() public {
+        _deposit(alice, 100_000e6);
+        uint256 markBefore = market.getMarkPrice();
+
+        vm.prank(alice);
+        market.openPosition(false, 10_000e18, 5e18);
+
+        (int256 size,,,) = market.positions(alice);
+        assertLt(size, 0, "short size negative");
+        assertLt(market.getMarkPrice(), markBefore, "mark down after short");
+    }
+
+    function test_OpenRevertsOnBadLeverageAndDoublePosition() public {
+        _deposit(alice, 100_000e6);
+
+        vm.prank(alice);
+        vm.expectRevert(bytes("BAD_LEVERAGE"));
+        market.openPosition(true, 10_000e18, 51e18); // > maxLeverage (50x)
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18);
+
+        vm.prank(alice);
+        vm.expectRevert(bytes("POSITION_EXISTS"));
+        market.openPosition(true, 10_000e18, 2e18);
+    }
+
+    // ---------------------------------------------------------
+    // PnL
+    // ---------------------------------------------------------
+
+    function test_LongProfitsWhenPriceRises() public {
+        _deposit(alice, 100_000e6);
+        _deposit(bob, 2_000_000e6);
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18); // alice long
+
+        assertApproxEqAbs(market.unrealizedPnl(alice), int256(0), 1e18, "pnl ~0 right after open");
+
+        // Bob pushes the mark price up with a large long.
+        vm.prank(bob);
+        market.openPosition(true, 200_000e18, 5e18);
+
+        assertGt(market.unrealizedPnl(alice), int256(0), "alice long in profit after price up");
+
+        uint256 freeBefore = market.freeCollateral(alice);
+        vm.prank(alice);
+        market.closePosition();
+        assertGt(market.freeCollateral(alice), freeBefore + 10_000e18, "profit realized to free collateral");
+    }
+
+    function test_ShortProfitsWhenPriceFalls() public {
+        _deposit(alice, 100_000e6);
+        _deposit(bob, 2_000_000e6);
+
+        vm.prank(alice);
+        market.openPosition(false, 10_000e18, 5e18); // alice short
+
+        // Bob pushes the mark price down with a large short.
+        vm.prank(bob);
+        market.openPosition(false, 200_000e18, 5e18);
+
+        assertGt(market.unrealizedPnl(alice), int256(0), "alice short in profit after price down");
+    }
+
+    function test_RoundTripWithNoMoveCostsOnlyFees() public {
+        _deposit(alice, 100_000e6);
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18);
+
+        vm.prank(alice);
+        market.closePosition();
+
+        // Started with 100k free; pays ~open fee (50) + close fee (~50) in slippage/fees.
+        uint256 free = market.freeCollateral(alice);
+        assertLt(free, 100_000e18, "round trip costs something");
+        assertGt(free, 99_800e18, "but only a small amount (fees)");
+    }
+
+    // ---------------------------------------------------------
+    // Funding
+    // ---------------------------------------------------------
+
+    function test_FundingLongsPayWhenMarkAboveIndex() public {
+        _deposit(alice, 100_000e6);
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18); // long, mark now > index (3000)
+
+        // Index stays at 3000, mark is above -> premium positive -> longs pay.
+        int256 avBefore = market.accountValue(alice);
+
+        vm.warp(block.timestamp + 1 hours);
+        market.settleFunding();
+
+        assertGt(market.cumulativePremiumFraction(), int256(0), "positive premium (mark>index)");
+        assertLt(market.accountValue(alice), avBefore, "long pays funding");
+    }
+
+    // ---------------------------------------------------------
+    // Liquidation
+    // ---------------------------------------------------------
+
+    function test_LiquidationFlow() public {
+        // Use a wider maintenance window for a cleanly-tuned liquidation scenario.
+        market.setRiskParams(10e18, 0.0625e18, 0.0125e18, 0.001e18);
+        _deposit(alice, 100_000e6);
+        _deposit(bob, 4_000_000e6);
+
+        // Alice opens a 10x long -> thin margin buffer.
+        vm.prank(alice);
+        market.openPosition(true, 20_000e18, 10e18); // 200k notional
+
+        // Not liquidatable yet.
+        vm.prank(keeper);
+        vm.expectRevert(bytes("NOT_LIQUIDATABLE"));
+        market.liquidate(alice);
+
+        // Bob pushes the price down enough to put Alice's 10x long under
+        // maintenance margin, but not so far that she's in bad debt (so a
+        // liquidation reward remains for the keeper).
+        vm.prank(bob);
+        market.openPosition(false, 70_000e18, 2e18);
+
+        assertLt(market.marginRatio(alice), int256(market.maintenanceMarginRatio()), "under maintenance");
+
+        uint256 keeperFreeBefore = market.freeCollateral(keeper);
+        vm.prank(keeper);
+        market.liquidate(alice);
+
+        (int256 size,,,) = market.positions(alice);
+        assertEq(size, int256(0), "position cleared");
+        assertGt(market.freeCollateral(keeper), keeperFreeBefore, "keeper earned a reward");
+    }
+}

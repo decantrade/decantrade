@@ -1,0 +1,26 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "decant-keeper",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  // Run every minute: settle funding + liquidate under-margined positions.
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    "RPC_URL": "https://sepolia.base.org"
+  },
+  // Index state (last scanned block + open-position set per market).
+  // Replace "id" with the namespace id from `wrangler kv namespace create KEEPER_KV`.
+  "kv_namespaces": [
+    { "binding": "KEEPER_KV", "id": "1193569825904538afa4e549c1c8fb17" }
+  ]
+  // Secrets (set with `wrangler secret put` in this directory):
+  //   KEEPER_PRIVATE_KEY  — funded Base Sepolia key the bot signs liquidations/funding with
+  //   RUN_TOKEN           — token guarding the manual GET /run trigger
+}
