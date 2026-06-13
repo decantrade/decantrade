@@ -1,0 +1,25 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decant">
+  <defs>
+    <linearGradient id="amber" x1="20" y1="20" x2="76" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f4cf6a"/>
+      <stop offset="1" stop-color="#e8b84b"/>
+    </linearGradient>
+    <linearGradient id="amberStem" x1="48" y1="58" x2="48" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e8b84b"/>
+      <stop offset="1" stop-color="#d9a73a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- decanted clear liquid: filled amber band in the funnel mouth -->
+  <path d="M27 30 L69 30 L58.5 45.5 L37.5 45.5 Z" fill="url(#amber)"/>
+
+  <!-- funnel / decanter vessel outline -->
+  <path d="M22 24 H74 L54 53 V67 H42 V53 Z"
+        stroke="#ede6da" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+
+  <!-- the refined drop being decanted off -->
+  <path d="M48 72 C52 78 54 81 54 84 a6 6 0 0 1 -12 0 C42 81 44 78 48 72 Z" fill="url(#amberStem)"/>
+
+  <!-- sediment left behind (the murk) -->
+  <circle cx="33.5" cy="40" r="2" fill="#6fcf97"/>
+</svg>
