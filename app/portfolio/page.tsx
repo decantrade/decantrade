@@ -3,14 +3,13 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/Footer";
 import { MobileNav, type MobileNavLink } from "@/components/MobileNav";
-import { TradeApp } from "@/components/trade/TradeApp";
+import { Portfolio } from "@/components/trade/Portfolio";
 
 const MOBILE_LINKS: MobileNavLink[] = [
   { label: "Home", href: "/", icon: "home" },
-  { label: "How it works", href: "/#how", icon: "how" },
+  { label: "Trade", href: "/trade", icon: "reserve", primary: true },
   { label: "Docs", href: "/docs", icon: "docs" },
   { label: "FAQ", href: "/#faq", icon: "faq" },
-  { label: "Reserve spot", href: "/#waitlist", icon: "reserve", primary: true },
 ];
 
 const MOBILE_SOCIALS: MobileNavLink[] = [
@@ -19,13 +18,13 @@ const MOBILE_SOCIALS: MobileNavLink[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "Trade · Decant testnet",
+  title: "Portfolio · Decant testnet",
   description:
-    "Trade perpetual futures on the Decant testnet app — ETH/USD and BTC/USD vAMM markets on Base Sepolia.",
-  robots: { index: true, follow: true },
+    "Your Decant testnet portfolio: account equity, free collateral, open positions across markets, and realized PnL.",
+  robots: { index: false, follow: true },
 };
 
-export default function TradePage() {
+export default function PortfolioPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-line">
@@ -35,16 +34,25 @@ export default function TradePage() {
             <span className="text-sm font-semibold tracking-tight">Decant</span>
           </Link>
           <Link
-            href="/"
+            href="/trade"
             className="hidden text-xs uppercase tracking-[0.18em] text-ink-dim hover:text-ink md:block"
           >
-            ← Home
+            ← Trade
           </Link>
           <MobileNav links={MOBILE_LINKS} socials={MOBILE_SOCIALS} />
         </div>
       </header>
       <main className="flex-1">
-        <TradeApp />
+        <div className="mx-auto max-w-5xl px-5 py-10">
+          <div className="mb-8">
+            <p className="text-[11px] uppercase tracking-[0.22em] text-amber">── Testnet app</p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Portfolio</h1>
+          </div>
+          <Portfolio />
+          <p className="mt-8 text-center text-xs text-ink-dim">
+            Testnet only · Base Sepolia · tokens have no value · not audited
+          </p>
+        </div>
       </main>
       <Footer />
     </div>

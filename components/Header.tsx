@@ -18,7 +18,7 @@ const MOBILE_LINKS: MobileNavLink[] = [
 ];
 
 const MOBILE_SOCIALS: MobileNavLink[] = [
-  { label: "GitHub", href: "https://github.com/decent-trade/decantrade", external: true, icon: "github" },
+  { label: "GitHub", href: "https://github.com/decantrade/decantrade", external: true, icon: "github" },
   { label: "X / Twitter", href: "https://x.com/_decantrade", external: true, icon: "x" },
 ];
 

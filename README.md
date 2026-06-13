@@ -17,6 +17,20 @@ Launch a leveraged market on any Base token in ~60 seconds — no listing commit
 > invite-gated waitlist app. The trading protocol itself runs on a test network and uses
 > tokens with no monetary value. Nothing here is financial advice. See [/risk](https://decantrade.com/risk).
 
+## Token
+
+**$DECANT** · Base · [`0x10feE05Ef916625FD86b2fED432e325bE897BBa3`](https://basescan.org/token/0x10feE05Ef916625FD86b2fED432e325bE897BBa3)
+
+Live and tradable on **Bankr**. Always verify the contract address against [decantrade.com](https://decantrade.com) — beware of impersonators.
+
+## Demo
+
+A full trade on testnet, end-to-end: connect wallet → deposit collateral → open a leveraged long → see it on the leaderboard → close. Every step is a real on-chain transaction on Base Sepolia.
+
+[![Watch the Decant testnet demo](docs/screenshots/trade.png)](https://github.com/decantrade/decantrade/blob/main/docs/demo.mp4)
+
+▶ **[Watch the demo](https://github.com/decantrade/decantrade/blob/main/docs/demo.mp4)** (39s) — or grab the [raw file](https://github.com/decantrade/decantrade/raw/main/docs/demo.mp4).
+
 ## Screenshots
 
 | Landing | Trade terminal (testnet) |

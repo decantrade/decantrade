@@ -59,7 +59,7 @@ const jsonLd = {
       logo: "https://decantrade.com/brand/decant-mark.png",
       sameAs: [
         "https://x.com/_decantrade",
-        "https://github.com/decent-trade/decantrade",
+        "https://github.com/decantrade/decantrade",
       ],
     },
     {

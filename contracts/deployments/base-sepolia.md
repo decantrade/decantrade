@@ -14,6 +14,13 @@ Explorer: https://sepolia.basescan.org
 | Deployer / owner / governor | `0x2A2297Ba0a704d165b05D3A8e265700d23efcB16` |
 | **MarketFactory** (permissionless) | `0xFdcaF774A34E6a457A43402762727432884e1403` |
 | SOL/USD market (created via factory) | `0xFb9a9df405Ffd8BAa9dAd9CC02946CDEFb2e34a7` |
+| SPCX (SpaceX pre-IPO) oracle (MockOracle) | `0xEdC7D06fFcF1B2527f05164B5036da43d807e849` |
+| SPCX/USD market (PerpMarket) | `0x4e65a31d3A1ee088492bb3CE3E8CA3AD7C37Cd30` |
+
+> SPCX is a pre-IPO market (SpaceX): SpaceX has no Pyth/Uniswap on-chain feed, so
+> this market uses a settable `MockOracle` (keeper-pushed on testnet) seeded at
+> ~$158.41. Deployed via `script/DeploySpcx.s.sol`. Testnet-only demonstration of
+> the permissionless "any market" thesis — not a real-time price.
 
 ## Permissionless factory (Phase B)
 

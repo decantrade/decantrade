@@ -17,6 +17,7 @@ const PRODUCT: Record<MarketKey, string> = {
   ETH: "ETH-USD",
   BTC: "BTC-USD",
   SOL: "SOL-USD",
+  SPCX: "SPCX-USD",
 };
 
 const TIMEFRAMES = [
@@ -153,7 +154,9 @@ export function PriceChart({ marketKey }: { marketKey: MarketKey }) {
         )}
       </div>
       <p className="mt-2 text-right text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-        Spot reference · Coinbase / Binance
+        {marketKey === "SPCX"
+          ? "Pre-IPO · simulated price (testnet)"
+          : "Spot reference · Coinbase / Binance"}
       </p>
     </div>
   );

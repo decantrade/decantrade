@@ -12,6 +12,43 @@ const PRODUCTS: Record<string, { binance: string }> = {
   "SOL-USD": { binance: "SOLUSDT" },
 };
 
+// Synthetic markets: assets with no public exchange feed (e.g. pre-IPO names).
+// SPCX tracks SpaceX pre-IPO; on testnet its index price is keeper-pushed, so we
+// render a deterministic pseudo price series anchored at the seed price.
+const SYNTHETIC: Record<string, { anchor: number }> = {
+  "SPCX-USD": { anchor: 158.41 },
+};
+
+// Deterministic PRNG (mulberry32) so candles are stable across reloads.
+function rng(seed: number): number {
+  let t = (seed + 0x6d2b79f5) | 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function synthCandles(anchor: number, granularity: number): Candle[] {
+  const n = 300;
+  const nowBucket = Math.floor(Date.now() / 1000 / granularity);
+  const start = nowBucket - (n - 1);
+  const vol = 0.012; // per-candle volatility
+  const out: Candle[] = [];
+  let price = anchor;
+  for (let i = 0; i < n; i++) {
+    const bucket = start + i;
+    const open = price;
+    const drift = (rng(bucket) - 0.5) * 2 * vol; // mean-reverting-ish walk
+    // gentle pull back toward the anchor so it doesn't wander off forever
+    const revert = (anchor - open) * 0.02;
+    const close = Math.max(anchor * 0.5, open * (1 + drift) + revert);
+    const hi = Math.max(open, close) * (1 + rng(bucket * 7 + 1) * vol);
+    const lo = Math.min(open, close) * (1 - rng(bucket * 13 + 3) * vol);
+    out.push([bucket * granularity, lo, hi, open, close, rng(bucket * 3 + 5) * 1000]);
+    price = close;
+  }
+  return out;
+}
+
 const GRAN_TO_BINANCE: Record<number, string> = {
   3600: "1h",
   21600: "6h",
@@ -62,9 +99,21 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const product = searchParams.get("product") ?? "ETH-USD";
   const granularity = Number(searchParams.get("granularity") ?? "3600");
+  if (!GRAN_TO_BINANCE[granularity]) {
+    return NextResponse.json({ error: "unsupported granularity" }, { status: 400 });
+  }
+
+  const synth = SYNTHETIC[product];
+  if (synth) {
+    return NextResponse.json(
+      { source: "synthetic", candles: synthCandles(synth.anchor, granularity) },
+      { headers: { "cache-control": "public, s-maxage=60, stale-while-revalidate=300" } },
+    );
+  }
+
   const meta = PRODUCTS[product];
-  if (!meta || !GRAN_TO_BINANCE[granularity]) {
-    return NextResponse.json({ error: "unsupported product/granularity" }, { status: 400 });
+  if (!meta) {
+    return NextResponse.json({ error: "unsupported product" }, { status: 400 });
   }
 
   let candles: Candle[] | null = null;

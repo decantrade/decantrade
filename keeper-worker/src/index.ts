@@ -49,6 +49,7 @@ const DEFAULT_MARKETS: Market[] = [
   { key: "ETH", address: "0xB92951edfeC55296D593be9EA3858337cBc199cc" },
   { key: "BTC", address: "0x1D482BcEfe1a4ECBa59662b76D1265DfCa2A94b1" },
   { key: "SOL", address: "0xFb9a9df405Ffd8BAa9dAd9CC02946CDEFb2e34a7" },
+  { key: "SPCX", address: "0x4e65a31d3A1ee088492bb3CE3E8CA3AD7C37Cd30" },
 ];
 
 const DEFAULT_START_BLOCK = 42326000n;
@@ -148,6 +149,14 @@ const keeperEvents = perpMarketAbi.filter(
   (x) => x.type === "event" && TRADER_EVENTS.includes(x.name),
 ) as Extract<(typeof perpMarketAbi)[number], { type: "event" }>[];
 
+// FundingSettled is indexed separately into a compact history (no trader, would
+// otherwise flood the activity feed).
+const fundingEvents = perpMarketAbi.filter(
+  (x) => x.type === "event" && x.name === "FundingSettled",
+) as Extract<(typeof perpMarketAbi)[number], { type: "event" }>[];
+const indexedEvents = [...keeperEvents, ...fundingEvents];
+const MAX_FUNDING = 200; // cap the funding history kept in KV
+
 function parseMarkets(env: Env): Market[] {
   const raw = env.MARKETS?.trim();
   if (!raw) return DEFAULT_MARKETS;
@@ -185,6 +194,17 @@ type IndexedEvent = {
   amount?: string;
   pnl?: string;
   reward?: string;
+};
+
+type FundingRecord = {
+  market: string;
+  block: number;
+  ts: number;
+  tx: string;
+  logIndex: number;
+  mark: string;
+  index: string;
+  premium: string;
 };
 
 type LeaderRow = { realizedPnl: string; volume: string; trades: number; liquidations: number };
@@ -250,6 +270,7 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
 
   // ---- index new logs in bounded chunks ----
   const newEvents: IndexedEvent[] = [];
+  const newFunding: FundingRecord[] = [];
   let from = cursor + 1n;
   let chunks = 0;
   while (from <= head && chunks < MAX_CHUNKS_PER_RUN) {
@@ -257,7 +278,7 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
     try {
       const logs = await client.getLogs({
         address: markets.map((m) => m.address),
-        events: keeperEvents,
+        events: indexedEvents,
         fromBlock: from,
         toBlock: to,
       });
@@ -265,13 +286,17 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
         const key = byAddress.get(log.address.toLowerCase());
         if (!key) continue;
         const ev = decodeIndexed(log, key);
-        if (!ev) continue;
-        // maintain open-trader set
-        const set = new Set(open[key]);
-        if (ev.kind === "PositionOpened") set.add(ev.trader);
-        else if (ev.kind === "PositionClosed" || ev.kind === "Liquidated") set.delete(ev.trader);
-        open[key] = [...set];
-        newEvents.push(ev);
+        if (ev) {
+          // maintain open-trader set
+          const set = new Set(open[key]);
+          if (ev.kind === "PositionOpened") set.add(ev.trader);
+          else if (ev.kind === "PositionClosed" || ev.kind === "Liquidated") set.delete(ev.trader);
+          open[key] = [...set];
+          newEvents.push(ev);
+          continue;
+        }
+        const fe = decodeFunding(log, key);
+        if (fe) newFunding.push(fe);
       }
     } catch (e) {
       console.warn(`[keeper] getLogs ${from}-${to} failed: ${errMsg(e)}`);
@@ -284,8 +309,10 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
   const caughtUp = cursor >= head;
 
   // ---- resolve block timestamps for new events (bounded) ----
-  if (newEvents.length) {
-    const blocks = [...new Set(newEvents.map((e) => e.block))].slice(0, MAX_TS_LOOKUPS);
+  if (newEvents.length || newFunding.length) {
+    const blocks = [
+      ...new Set([...newEvents, ...newFunding].map((e) => e.block)),
+    ].slice(0, MAX_TS_LOOKUPS);
     const tsByBlock = new Map<number, number>();
     for (const b of blocks) {
       try {
@@ -294,12 +321,16 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
       } catch { /* leave ts=0 */ }
     }
     for (const e of newEvents) e.ts = tsByBlock.get(e.block) ?? 0;
+    for (const f of newFunding) f.ts = tsByBlock.get(f.block) ?? 0;
   }
 
   // ---- persist state (every run) + indexer blobs (only when new) ----
   await env.KEEPER_KV.put("state", JSON.stringify({ cursor: cursor.toString(), open }));
   if (newEvents.length) {
     await mergeIndex(env, newEvents);
+  }
+  if (newFunding.length) {
+    await mergeFunding(env, newFunding);
   }
 
   const result: RunResult = {
@@ -432,6 +463,46 @@ function decodeIndexed(log: Log, market: string): IndexedEvent | null {
       break;
   }
   return base;
+}
+
+function decodeFunding(log: Log, market: string): FundingRecord | null {
+  let decoded: { eventName: string; args: Record<string, unknown> };
+  try {
+    decoded = decodeEventLog({
+      abi: perpMarketAbi,
+      data: log.data,
+      topics: log.topics,
+    }) as unknown as { eventName: string; args: Record<string, unknown> };
+  } catch {
+    return null;
+  }
+  if (decoded.eventName !== "FundingSettled") return null;
+  const a = decoded.args;
+  return {
+    market,
+    block: Number(log.blockNumber ?? 0n),
+    ts: 0,
+    tx: log.transactionHash ?? "",
+    logIndex: Number(log.logIndex ?? 0),
+    mark: wad(a.markPrice as bigint, 2),
+    index: wad(a.indexPrice as bigint, 2),
+    premium: wad(a.premiumFraction as bigint, 8),
+  };
+}
+
+/** Merge new FundingSettled records into a capped KV history (dedup by tx:logIndex). */
+async function mergeFunding(env: Env, recs: FundingRecord[]): Promise<void> {
+  const raw = await env.KEEPER_KV.get("funding");
+  const hist: FundingRecord[] = raw ? JSON.parse(raw) : [];
+  const seen = new Set(hist.map((e) => `${e.tx}:${e.logIndex}`));
+  for (const r of recs) {
+    const id = `${r.tx}:${r.logIndex}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    hist.push(r);
+  }
+  hist.sort((a, b) => b.block - a.block || b.logIndex - a.logIndex);
+  await env.KEEPER_KV.put("funding", JSON.stringify(hist.slice(0, MAX_FUNDING)));
 }
 
 /** Merge new events into the KV feed + leaderboard + stats (dedup by tx:logIndex). */
@@ -597,6 +668,14 @@ const worker = {
       return json({ ok: true, open: state.open });
     }
 
+    if (url.pathname === "/funding") {
+      const hist: FundingRecord[] = JSON.parse((await env.KEEPER_KV.get("funding")) || "[]");
+      const market = url.searchParams.get("market");
+      const limit = Math.min(Number(url.searchParams.get("limit") || 20), 200);
+      const rows = (market ? hist.filter((f) => f.market === market) : hist).slice(0, limit);
+      return json({ ok: true, count: rows.length, funding: rows });
+    }
+
     // Manual trigger for testing/ops: GET /run?key=<RUN_TOKEN>
     if (url.pathname === "/run") {
       if (!env.RUN_TOKEN || url.searchParams.get("key") !== env.RUN_TOKEN) {
@@ -612,7 +691,7 @@ const worker = {
     return json({
       ok: true,
       service: "decant-keeper",
-      routes: ["/health", "/stats", "/activity?trader=&market=&kind=&limit=", "/leaderboard?sort=&limit=", "/positions", "/run?key="],
+      routes: ["/health", "/stats", "/activity?trader=&market=&kind=&limit=", "/leaderboard?sort=&limit=", "/positions", "/funding?market=&limit=", "/run?key="],
     });
   },
 };

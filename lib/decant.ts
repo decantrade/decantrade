@@ -8,7 +8,7 @@ export const ADDRESSES = {
   factory: "0xFdcaF774A34E6a457A43402762727432884e1403",
 } as const;
 
-export type MarketKey = "ETH" | "BTC" | "SOL";
+export type MarketKey = "ETH" | "BTC" | "SOL" | "SPCX";
 
 export const MARKETS: Record<
   MarketKey,
@@ -28,6 +28,11 @@ export const MARKETS: Record<
     label: "SOL / USD",
     symbol: "SOL",
     address: "0xFb9a9df405Ffd8BAa9dAd9CC02946CDEFb2e34a7",
+  },
+  SPCX: {
+    label: "SPCX / USD",
+    symbol: "SPCX",
+    address: "0x4e65a31d3A1ee088492bb3CE3E8CA3AD7C37Cd30",
   },
 };
 
@@ -104,6 +109,55 @@ export const perpMarketAbi = [
   {
     type: "function",
     name: "maxLeverage",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "maintenanceMarginRatio",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "tradingFeeRatio",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "cumulativePremiumFraction",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "int256" }],
+  },
+  {
+    type: "function",
+    name: "lastFundingTime",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "fundingInterval",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "baseReserve",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "quoteReserve",
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "uint256" }],

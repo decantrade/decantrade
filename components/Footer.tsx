@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
+import { TokenBadge } from "./TokenBadge";
 
 const SOCIALS = [
   { label: "X", href: "https://x.com/_decantrade" },
-  { label: "GitHub", href: "https://github.com/decent-trade/decantrade" },
+  { label: "GitHub", href: "https://github.com/decantrade/decantrade" },
 ];
 
 const LEGAL = [
   { label: "Docs", href: "/docs" },
+  { label: "Roadmap", href: "/roadmap" },
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
   { label: "Risk", href: "/risk" },
@@ -54,7 +56,14 @@ export function Footer() {
           </nav>
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-line pt-6 text-[11px] text-ink-dim sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col gap-2 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-[11px] uppercase tracking-[0.15em] text-ink-dim">
+            $DECANT token
+          </span>
+          <TokenBadge />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 border-t border-line pt-6 text-[11px] text-ink-dim sm:flex-row sm:items-center sm:justify-between">
           <span className="uppercase tracking-[0.15em]">
             testnet · pre-audit · not real money
           </span>

@@ -114,6 +114,7 @@ function parseMarkets(): MarketCfg[] {
     { key: "ETH", address: "0xB92951edfeC55296D593be9EA3858337cBc199cc" },
     { key: "BTC", address: "0x1D482BcEfe1a4ECBa59662b76D1265DfCa2A94b1" },
     { key: "SOL", address: "0xFb9a9df405Ffd8BAa9dAd9CC02946CDEFb2e34a7" },
+    { key: "SPCX", address: "0x4e65a31d3A1ee088492bb3CE3E8CA3AD7C37Cd30" },
   ];
 }
 
