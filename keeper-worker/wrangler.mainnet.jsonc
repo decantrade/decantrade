@@ -17,9 +17,9 @@
     // eth_getLogs + tx submission than the rate-limited mainnet.base.org.
     "RPC_URL": "https://base-rpc.publicnode.com",
     "CHAIN_ID": "8453",
-    // Guarded ETH/USD market on Base mainnet (chain 8453). See
-    // contracts/deployments/base-mainnet.md.
-    "MARKETS": "ETH:0x010820DC816Aa354C05770cEb7A8567d123DBbE4",
+    // Guarded ETH/USD + BTC/USD + SOL/USD markets on Base mainnet (chain 8453).
+    // See contracts/deployments/base-mainnet.md.
+    "MARKETS": "ETH:0x010820DC816Aa354C05770cEb7A8567d123DBbE4,BTC:0xfe326c7559C2f39b3B5195048E04bBC077ef1245,SOL:0xB492Dda0c1E9B98EbF0478fc28F6Db65CB3b6c44",
     // Market deployed at block 47327320; start indexing just before it.
     "START_BLOCK": "47327320"
   },

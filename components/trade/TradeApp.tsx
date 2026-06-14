@@ -482,9 +482,9 @@ export function TradeApp() {
       {network.guarded && (
         <div className="mb-6 rounded-lg border border-amber/40 bg-amber/5 px-4 py-3 text-xs text-ink-soft">
           <span className="font-semibold text-amber">Guarded beta · real funds.</span>{" "}
-          ETH/USD on Base mainnet, gated to $DECANT holders / allowlist. Caps: max
-          $200 deposit per wallet, 10× leverage, $2,000 open interest. Unaudited —
-          trade small.
+          ETH, BTC & SOL on Base mainnet, gated to $DECANT holders / allowlist.
+          Caps: max $200 deposit per wallet, 10× leverage, $2,000 open interest.
+          Unaudited — trade small.
         </div>
       )}
 
