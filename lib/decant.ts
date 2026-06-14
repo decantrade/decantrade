@@ -90,12 +90,22 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     chainId: base.id,
     // Real Base mainnet USDC (Circle). No permissionless factory on mainnet yet.
     addresses: { usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" },
-    // Guarded ETH/USD market — see contracts/deployments/base-mainnet.md.
+    // Guarded ETH/BTC/SOL markets — see contracts/deployments/base-mainnet.md.
     markets: {
       ETH: {
         label: "ETH / USD",
         symbol: "ETH",
         address: "0x010820DC816Aa354C05770cEb7A8567d123DBbE4",
+      },
+      BTC: {
+        label: "BTC / USD",
+        symbol: "BTC",
+        address: "0xfe326c7559C2f39b3B5195048E04bBC077ef1245",
+      },
+      SOL: {
+        label: "SOL / USD",
+        symbol: "SOL",
+        address: "0xB492Dda0c1E9B98EbF0478fc28F6Db65CB3b6c44",
       },
     },
     keeperApi:
