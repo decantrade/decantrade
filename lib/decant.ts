@@ -1,4 +1,5 @@
-import { baseSepolia } from "viem/chains";
+import { base, baseSepolia } from "viem/chains";
+import type { Chain } from "viem";
 
 // Decant MVP deployment on Base Sepolia (testnet). See decant-contracts/deployments.
 export const DECANT_CHAIN = baseSepolia;
@@ -10,10 +11,9 @@ export const ADDRESSES = {
 
 export type MarketKey = "ETH" | "BTC" | "SOL" | "SPCX";
 
-export const MARKETS: Record<
-  MarketKey,
-  { label: string; symbol: string; address: `0x${string}` }
-> = {
+export type MarketInfo = { label: string; symbol: string; address: `0x${string}` };
+
+export const MARKETS: Record<MarketKey, MarketInfo> = {
   ETH: {
     label: "ETH / USD",
     symbol: "ETH",
@@ -41,6 +41,73 @@ export const USDC_DECIMALS = 6;
 // Public keeper + indexer worker (activity feed, leaderboard). Overridable via env.
 export const KEEPER_API =
   process.env.NEXT_PUBLIC_KEEPER_API || "https://decant-keeper.decantrade.workers.dev";
+
+// ----- Networks -----
+// The /trade app can target either the public Base Sepolia testnet (default,
+// faucet + permissionless market creation) or the guarded Base mainnet beta
+// (real USDC, holder-gated + capped, single ETH/USD market). The active network
+// is chosen at runtime via the toggle in the UI — see lib/network.tsx.
+export type NetworkId = "testnet" | "mainnet";
+
+// The chain ids configured in wagmi (see lib/wagmi.ts). wagmi types `chainId`
+// params as this literal union, so config calls must use it (not plain number).
+export type DecantChainId = typeof base.id | typeof baseSepolia.id;
+
+export type NetworkConfig = {
+  id: NetworkId;
+  label: string;
+  chain: Chain;
+  chainId: DecantChainId;
+  addresses: { usdc: `0x${string}`; factory?: `0x${string}` };
+  markets: Partial<Record<MarketKey, MarketInfo>>;
+  keeperApi: string;
+  explorer: string;
+  collateralLabel: string;
+  hasFaucet: boolean;
+  hasFactory: boolean;
+  guarded: boolean;
+};
+
+export const NETWORKS: Record<NetworkId, NetworkConfig> = {
+  testnet: {
+    id: "testnet",
+    label: "Testnet",
+    chain: baseSepolia,
+    chainId: baseSepolia.id,
+    addresses: ADDRESSES,
+    markets: MARKETS,
+    keeperApi: KEEPER_API,
+    explorer: "https://sepolia.basescan.org",
+    collateralLabel: "tUSDC",
+    hasFaucet: true,
+    hasFactory: true,
+    guarded: false,
+  },
+  mainnet: {
+    id: "mainnet",
+    label: "Mainnet",
+    chain: base,
+    chainId: base.id,
+    // Real Base mainnet USDC (Circle). No permissionless factory on mainnet yet.
+    addresses: { usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" },
+    // Guarded ETH/USD market — see contracts/deployments/base-mainnet.md.
+    markets: {
+      ETH: {
+        label: "ETH / USD",
+        symbol: "ETH",
+        address: "0x010820DC816Aa354C05770cEb7A8567d123DBbE4",
+      },
+    },
+    keeperApi:
+      process.env.NEXT_PUBLIC_KEEPER_API_MAINNET ||
+      "https://decant-keeper-mainnet.decantrade.workers.dev",
+    explorer: "https://basescan.org",
+    collateralLabel: "USDC",
+    hasFaucet: false,
+    hasFactory: false,
+    guarded: true,
+  },
+};
 
 // ----- ABIs (only the methods the UI uses) -----
 
