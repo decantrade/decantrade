@@ -31,6 +31,24 @@ contract PerpMarket {
     uint256 public liquidationFeeRatio = 0.005e18; // 0.5% of notional to liquidator
     uint256 public tradingFeeRatio = 0.001e18; // 0.10% of notional
 
+    // ----- Guarded-launch controls (all disabled by default) -----
+    // Access gate: when gateToken != address(0), callers must be allowlisted
+    // or hold >= gateMinBalance of gateToken to deposit / open.
+    IERC20 public gateToken;
+    uint256 public gateMinBalance;
+    mapping(address => bool) public allowlist;
+
+    // Per-wallet net-deposit cap (WAD). 0 = unlimited.
+    uint256 public maxDepositPerWallet;
+    mapping(address => uint256) public netDeposited; // deposits - withdrawals, WAD
+
+    // Global open-interest cap on aggregate open notional (WAD). 0 = unlimited.
+    uint256 public maxOpenInterest;
+    uint256 public totalOpenInterest;
+
+    // Emergency pause: blocks new deposits / opens. Close & withdraw stay open.
+    bool public paused;
+
     // ----- vAMM state (WAD) -----
     uint256 public baseReserve; // virtual token reserve
     uint256 public quoteReserve; // virtual USD reserve
@@ -68,6 +86,23 @@ contract PerpMarket {
         _;
     }
 
+    modifier whenNotPaused() {
+        require(!paused, "PAUSED");
+        _;
+    }
+
+    modifier onlyGated() {
+        require(_isGated(msg.sender), "NOT_GATED");
+        _;
+    }
+
+    /// @dev True when the account may trade: no gate set, allowlisted, or holds enough gateToken.
+    function _isGated(address account) internal view returns (bool) {
+        if (address(gateToken) == address(0)) return true;
+        if (allowlist[account]) return true;
+        return gateToken.balanceOf(account) >= gateMinBalance;
+    }
+
     // ----- Events -----
     event Deposited(address indexed trader, uint256 amount);
     event Withdrawn(address indexed trader, uint256 amount);
@@ -77,6 +112,10 @@ contract PerpMarket {
     event PositionClosed(address indexed trader, int256 pnl, int256 funding, uint256 markPrice);
     event Liquidated(address indexed trader, address indexed liquidator, uint256 reward, int256 net);
     event FundingSettled(int256 premiumFraction, int256 cumulative, uint256 markPrice, uint256 indexPrice);
+    event PausedSet(bool paused);
+    event GateSet(address gateToken, uint256 gateMinBalance);
+    event AllowlistSet(address indexed account, bool allowed);
+    event CapsSet(uint256 maxDepositPerWallet, uint256 maxOpenInterest);
 
     constructor(IERC20 _collateral, IOracle _oracle, uint256 _baseReserve, uint256 _quoteReserve) {
         require(_baseReserve > 0 && _quoteReserve > 0, "BAD_RESERVES");
@@ -96,10 +135,15 @@ contract PerpMarket {
     //                        Collateral
     // ============================================================
 
-    function deposit(uint256 amount) external nonReentrant {
+    function deposit(uint256 amount) external nonReentrant whenNotPaused onlyGated {
         require(amount > 0, "ZERO");
+        uint256 wad = amount * collateralScale;
+        if (maxDepositPerWallet > 0) {
+            require(netDeposited[msg.sender] + wad <= maxDepositPerWallet, "DEPOSIT_CAP");
+        }
         require(collateral.transferFrom(msg.sender, address(this), amount), "TRANSFER_FAIL");
-        freeCollateral[msg.sender] += amount * collateralScale;
+        freeCollateral[msg.sender] += wad;
+        netDeposited[msg.sender] += wad;
         emit Deposited(msg.sender, amount);
     }
 
@@ -108,6 +152,8 @@ contract PerpMarket {
         uint256 wad = amount * collateralScale;
         require(freeCollateral[msg.sender] >= wad, "INSUFFICIENT");
         freeCollateral[msg.sender] -= wad;
+        // Free up deposit-cap headroom as capital leaves.
+        netDeposited[msg.sender] = wad >= netDeposited[msg.sender] ? 0 : netDeposited[msg.sender] - wad;
         require(collateral.transfer(msg.sender, amount), "TRANSFER_FAIL");
         emit Withdrawn(msg.sender, amount);
     }
@@ -116,7 +162,12 @@ contract PerpMarket {
     //                        Trading
     // ============================================================
 
-    function openPosition(bool isLong, uint256 marginAmount, uint256 leverage) external nonReentrant {
+    function openPosition(bool isLong, uint256 marginAmount, uint256 leverage)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyGated
+    {
         require(positions[msg.sender].size == 0, "POSITION_EXISTS");
         require(leverage > 0 && leverage <= maxLeverage, "BAD_LEVERAGE");
         require(marginAmount > 0 && freeCollateral[msg.sender] >= marginAmount, "INSUFFICIENT_MARGIN");
@@ -126,6 +177,10 @@ contract PerpMarket {
         uint256 notional = (marginAmount * leverage) / WAD;
         uint256 fee = (notional * tradingFeeRatio) / WAD;
         require(marginAmount > fee, "MARGIN_LT_FEE");
+        if (maxOpenInterest > 0) {
+            require(totalOpenInterest + notional <= maxOpenInterest, "OI_CAP");
+        }
+        totalOpenInterest += notional;
 
         freeCollateral[msg.sender] -= marginAmount;
         insuranceFund += fee;
@@ -183,6 +238,9 @@ contract PerpMarket {
             quoteReserve = k / newBase;
             baseReserve = newBase;
         }
+
+        // Release this position's contribution to aggregate open interest.
+        totalOpenInterest = pos.openNotional >= totalOpenInterest ? 0 : totalOpenInterest - pos.openNotional;
 
         int256 funding = (pos.size * (cumulativePremiumFraction - pos.lastPremium)) / int256(WAD);
         uint256 fee = (closeNotional * tradingFeeRatio) / WAD;
@@ -327,5 +385,31 @@ contract PerpMarket {
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "ZERO_ADDR");
         owner = newOwner;
+    }
+
+    // ----- Guarded-launch admin -----
+
+    function setPaused(bool _paused) external onlyOwner {
+        paused = _paused;
+        emit PausedSet(_paused);
+    }
+
+    /// @notice Set the holder gate. gateToken == address(0) disables gating.
+    function setGate(IERC20 _gateToken, uint256 _gateMinBalance) external onlyOwner {
+        gateToken = _gateToken;
+        gateMinBalance = _gateMinBalance;
+        emit GateSet(address(_gateToken), _gateMinBalance);
+    }
+
+    function setAllowlist(address account, bool allowed) external onlyOwner {
+        allowlist[account] = allowed;
+        emit AllowlistSet(account, allowed);
+    }
+
+    /// @notice Set caps. 0 disables the respective cap.
+    function setCaps(uint256 _maxDepositPerWallet, uint256 _maxOpenInterest) external onlyOwner {
+        maxDepositPerWallet = _maxDepositPerWallet;
+        maxOpenInterest = _maxOpenInterest;
+        emit CapsSet(_maxDepositPerWallet, _maxOpenInterest);
     }
 }
