@@ -38,6 +38,7 @@ export interface Env {
   KEEPER_KV: KVNamespace;
   KEEPER_PRIVATE_KEY?: string;
   RPC_URL?: string;
+  CHAIN_ID?: string;
   MARKETS?: string;
   START_BLOCK?: string;
   RUN_TOKEN?: string;
@@ -166,8 +167,10 @@ function parseMarkets(env: Env): Market[] {
   });
 }
 
-function chainFor(rpcUrl: string) {
-  return defineChain({ ...baseSepolia, rpcUrls: { default: { http: [rpcUrl] } } });
+function chainFor(rpcUrl: string, chainId: number = baseSepolia.id) {
+  // Spreading baseSepolia keeps its id (84532); override it so signed txs carry
+  // the right EIP-155 chainId for the target network (e.g. 8453 Base mainnet).
+  return defineChain({ ...baseSepolia, id: chainId, rpcUrls: { default: { http: [rpcUrl] } } });
 }
 
 const wad = (v: bigint, dp = 4) => Number(formatUnits(v, 18)).toFixed(dp);
@@ -256,7 +259,7 @@ export async function runOnce(env: Env, opts: RunOpts = {}): Promise<RunResult> 
   const doFunding = opts.settleFunding ?? true;
   const rpcUrl = env.RPC_URL || "https://sepolia.base.org";
   const markets = parseMarkets(env);
-  const chain = chainFor(rpcUrl);
+  const chain = chainFor(rpcUrl, Number(env.CHAIN_ID || baseSepolia.id));
   const client = createPublicClient({ chain, transport: http(rpcUrl) });
   const byAddress = new Map<string, string>(markets.map((m) => [m.address.toLowerCase(), m.key]));
 
@@ -607,7 +610,7 @@ const worker = {
 
     if (url.pathname === "/health") {
       const rpcUrl = env.RPC_URL || "https://sepolia.base.org";
-      const client = createPublicClient({ chain: chainFor(rpcUrl), transport: http(rpcUrl) });
+      const client = createPublicClient({ chain: chainFor(rpcUrl, Number(env.CHAIN_ID || baseSepolia.id)), transport: http(rpcUrl) });
       const state = await loadState(env, DEFAULT_START_BLOCK, markets);
       let head = "?";
       let keeper: string | undefined;

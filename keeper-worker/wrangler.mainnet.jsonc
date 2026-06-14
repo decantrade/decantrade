@@ -1,0 +1,35 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "decant-keeper-mainnet",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  // Run every minute: settle funding + liquidate under-margined positions.
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    // Public Base mainnet RPC. base-rpc.publicnode.com is far more reliable for
+    // eth_getLogs + tx submission than the rate-limited mainnet.base.org.
+    "RPC_URL": "https://base-rpc.publicnode.com",
+    "CHAIN_ID": "8453",
+    // Guarded ETH/USD market on Base mainnet (chain 8453). See
+    // contracts/deployments/base-mainnet.md.
+    "MARKETS": "ETH:0x010820DC816Aa354C05770cEb7A8567d123DBbE4",
+    // Market deployed at block 47327320; start indexing just before it.
+    "START_BLOCK": "47327320"
+  },
+  // SEPARATE KV namespace from the testnet keeper (created via
+  // `wrangler kv namespace create KEEPER_KV_MAINNET`). Binding name stays
+  // KEEPER_KV so the worker code is unchanged.
+  "kv_namespaces": [
+    { "binding": "KEEPER_KV", "id": "758cde59520843308ea000574b51c1af" }
+  ]
+  // Secrets (set with `wrangler secret put --config wrangler.mainnet.jsonc`):
+  //   KEEPER_PRIVATE_KEY  — funded Base MAINNET key the bot signs liquidations/funding with
+  //   RUN_TOKEN           — token guarding the manual GET /run trigger
+}
