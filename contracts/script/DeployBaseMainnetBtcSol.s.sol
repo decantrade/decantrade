@@ -50,8 +50,12 @@ contract DeployBaseMainnetBtcSol is Script {
 
         vm.startBroadcast(pk);
 
-        address btcMarket = _deployMarket(pythAddr, BTC_USD, usdcAddr, gateToken, gateMin, maxDeposit, maxOi, maxLev, allowlist, finalOwner);
-        address solMarket = _deployMarket(pythAddr, SOL_USD, usdcAddr, gateToken, gateMin, maxDeposit, maxOi, maxLev, allowlist, finalOwner);
+        address btcMarket = _deployMarket(
+            pythAddr, BTC_USD, usdcAddr, gateToken, gateMin, maxDeposit, maxOi, maxLev, allowlist, finalOwner
+        );
+        address solMarket = _deployMarket(
+            pythAddr, SOL_USD, usdcAddr, gateToken, gateMin, maxDeposit, maxOi, maxLev, allowlist, finalOwner
+        );
 
         vm.stopBroadcast();
 
