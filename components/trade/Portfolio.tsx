@@ -4,15 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatUnits, type Abi } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
-import {
-  DECANT_CHAIN,
-  KEEPER_API,
-  MARKETS,
-  perpMarketAbi,
-  type MarketKey,
-} from "@/lib/decant";
+import { perpMarketAbi, type MarketKey } from "@/lib/decant";
+import { useNetwork } from "@/lib/network";
 
-const MARKET_KEYS = Object.keys(MARKETS) as MarketKey[];
 const CALLS_PER_MARKET = 4; // positions, unrealizedPnl, getMarkPrice, freeCollateral
 
 type Row = {
@@ -37,9 +31,12 @@ function signed(n: number, dp = 2) {
   return `${n >= 0 ? "+" : "-"}$${usd(Math.abs(n), dp)}`;
 }
 
-async function fetchRealized(trader: string): Promise<{ realized: number; trades: number } | null> {
+async function fetchRealized(
+  keeperApi: string,
+  trader: string,
+): Promise<{ realized: number; trades: number } | null> {
   try {
-    const r = await fetch(`${KEEPER_API}/activity?trader=${trader}&limit=200`);
+    const r = await fetch(`${keeperApi}/activity?trader=${trader}&limit=200`);
     const j = (await r.json()) as {
       ok: boolean;
       events?: { kind: string; pnl?: string }[];
@@ -61,16 +58,19 @@ async function fetchRealized(trader: string): Promise<{ realized: number; trades
 
 export function Portfolio() {
   const { address, isConnected } = useAccount();
+  const { network } = useNetwork();
+  const MARKETS = network.markets;
+  const MARKET_KEYS = Object.keys(MARKETS) as MarketKey[];
 
   const { data, isLoading } = useReadContracts({
     allowFailure: true,
     contracts: address
       ? MARKET_KEYS.flatMap((k) => {
-          const m = MARKETS[k];
+          const m = MARKETS[k]!;
           const base = {
             address: m.address,
             abi: perpMarketAbi as Abi,
-            chainId: DECANT_CHAIN.id,
+            chainId: network.chainId,
           } as const;
           return [
             { ...base, functionName: "positions", args: [address] },
@@ -87,14 +87,15 @@ export function Portfolio() {
   useEffect(() => {
     if (!(isConnected && address)) return;
     let cancelled = false;
-    const run = () => fetchRealized(address).then((r) => !cancelled && setRealized(r));
+    const run = () =>
+      fetchRealized(network.keeperApi, address).then((r) => !cancelled && setRealized(r));
     run();
     const t = setInterval(run, 30_000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, [isConnected, address]);
+  }, [isConnected, address, network.keeperApi]);
 
   if (!isConnected) {
     return (
@@ -128,8 +129,8 @@ export function Portfolio() {
       totalUpnl += uPnl;
       rows.push({
         key: k,
-        label: MARKETS[k].label,
-        symbol: MARKETS[k].symbol,
+        label: MARKETS[k]!.label,
+        symbol: MARKETS[k]!.symbol,
         isLong: sizeSigned > 0,
         sizeAbs,
         notional,

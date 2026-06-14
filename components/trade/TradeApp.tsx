@@ -15,14 +15,13 @@ import {
   useWriteContract,
 } from "wagmi";
 import {
-  ADDRESSES,
-  DECANT_CHAIN,
-  MARKETS,
   USDC_DECIMALS,
   erc20Abi,
   perpMarketAbi,
   type MarketKey,
+  type NetworkId,
 } from "@/lib/decant";
+import { useNetwork } from "@/lib/network";
 import dynamic from "next/dynamic";
 import { WALLETCONNECT_PROJECT_ID } from "@/lib/wagmi";
 import { PriceChart } from "./PriceChart";
@@ -95,15 +94,26 @@ export function TradeApp() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
+  const { network, networkId, setNetworkId } = useNetwork();
+  const DECANT_CHAIN = network.chain;
+  const ADDRESSES = network.addresses;
+  const MARKETS = network.markets;
+  const marketKeys = Object.keys(MARKETS) as MarketKey[];
+
   const [marketKey, setMarketKey] = useState<MarketKey>("ETH");
-  const market = MARKETS[marketKey];
-  const wrongNetwork = isConnected && chainId !== DECANT_CHAIN.id;
+  // Fall back to the first available market when the selected one isn't on the
+  // active network (e.g. switching from testnet BTC to mainnet, which is ETH-only).
+  const activeMarketKey: MarketKey = MARKETS[marketKey] ? marketKey : marketKeys[0];
+  const market = MARKETS[activeMarketKey]!;
+  const wrongNetwork = isConnected && chainId !== network.chainId;
 
   // Testnet trading is a waitlist-member perk: only wallets that joined the
-  // waitlist can trade. `member` is undefined while loading.
+  // waitlist can trade. On mainnet the gate is enforced on-chain ($DECANT
+  // holding / allowlist), so the UI doesn't waitlist-gate. `member` is
+  // undefined while loading.
   const { data: member } = useQuery({
     queryKey: ["waitlist-member", address],
-    enabled: isConnected && !!address,
+    enabled: isConnected && !!address && networkId === "testnet",
     staleTime: 60_000,
     queryFn: async (): Promise<boolean | null> => {
       const r = await fetch(`/api/waitlist/check?address=${address}`);
@@ -111,7 +121,7 @@ export function TradeApp() {
       return d?.ok ? !!d.member : null;
     },
   });
-  const locked = isConnected && member === false;
+  const locked = networkId === "testnet" && isConnected && member === false;
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +136,13 @@ export function TradeApp() {
   const [slPrice, setSlPrice] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
 
+  function changeNetwork(id: NetworkId) {
+    setNetworkId(id);
+    // Mainnet caps deposits at $200/wallet; seed a within-cap default.
+    setDepositAmt(id === "mainnet" ? "100" : "1000");
+    setError(null);
+  }
+
   // ----- reads -----
   const marketRead = (name: string, args: unknown[] = []) =>
     ({
@@ -133,7 +150,7 @@ export function TradeApp() {
       abi: perpMarketAbi as Abi,
       functionName: name,
       args,
-      chainId: DECANT_CHAIN.id,
+      chainId: network.chainId,
       query: { refetchInterval: 10_000 },
     }) as const;
 
@@ -164,7 +181,7 @@ export function TradeApp() {
     abi: erc20Abi as Abi,
     functionName: "balanceOf",
     args: address ? [address] : [],
-    chainId: DECANT_CHAIN.id,
+    chainId: network.chainId,
     query: { enabled: !!address, refetchInterval: 15_000 },
   });
   const { data: allowance, refetch: refAllow } = useReadContract({
@@ -172,7 +189,7 @@ export function TradeApp() {
     abi: erc20Abi as Abi,
     functionName: "allowance",
     args: address ? [address, market.address] : [],
-    chainId: DECANT_CHAIN.id,
+    chainId: network.chainId,
     query: { enabled: !!address, refetchInterval: 15_000 },
   });
 
@@ -395,7 +412,7 @@ export function TradeApp() {
   const tpSlFired = useRef(false);
   useEffect(() => {
     tpSlFired.current = false;
-  }, [marketKey, hasPosition]);
+  }, [activeMarketKey, hasPosition]);
   useEffect(() => {
     if (!hasPosition || busy || markF === undefined || tpSlFired.current) return;
     const tp = Number(tpPrice);
@@ -445,10 +462,13 @@ export function TradeApp() {
     <div className="mx-auto max-w-5xl px-5 py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-amber">── Testnet app</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-amber">
+            {network.guarded ? "── Mainnet beta" : "── Testnet app"}
+          </p>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Trade</h1>
         </div>
         <div className="flex items-center gap-2">
+          <NetworkToggle networkId={networkId} onChange={changeNetwork} />
           <Link
             href="/portfolio"
             className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-amber hover:text-amber"
@@ -459,12 +479,21 @@ export function TradeApp() {
         </div>
       </div>
 
+      {network.guarded && (
+        <div className="mb-6 rounded-lg border border-amber/40 bg-amber/5 px-4 py-3 text-xs text-ink-soft">
+          <span className="font-semibold text-amber">Guarded beta · real funds.</span>{" "}
+          ETH/USD on Base mainnet, gated to $DECANT holders / allowlist. Caps: max
+          $200 deposit per wallet, 10× leverage, $2,000 open interest. Unaudited —
+          trade small.
+        </div>
+      )}
+
       {wrongNetwork && (
         <button
-          onClick={() => switchChain({ chainId: DECANT_CHAIN.id })}
+          onClick={() => switchChain({ chainId: network.chainId })}
           className="mb-6 w-full rounded-lg border border-amber bg-amber/10 px-4 py-3 text-sm text-amber"
         >
-          Wrong network — switch to Base Sepolia
+          Wrong network — switch to {DECANT_CHAIN.name}
         </button>
       )}
 
@@ -475,22 +504,22 @@ export function TradeApp() {
             key={k}
             onClick={() => setMarketKey(k)}
             className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              k === marketKey
+              k === activeMarketKey
                 ? "border-amber bg-amber/10 text-amber"
                 : "border-line text-ink-soft hover:border-ink-dim"
             }`}
           >
-            {MARKETS[k].label}
+            {MARKETS[k]!.label}
           </button>
         ))}
       </div>
 
       {/* Price chart */}
-      <PriceChart marketKey={marketKey} />
+      <PriceChart marketKey={activeMarketKey} />
 
       {/* Funding countdown + recent funding history */}
       <FundingPanel
-        marketKey={marketKey}
+        marketKey={activeMarketKey}
         fundingRate={fundingRate}
         nextFundingTs={nextFundingTs}
         intervalSec={fundingIntervalSec}
@@ -544,7 +573,7 @@ export function TradeApp() {
 
       {!isConnected ? (
         <div className="rounded-xl border border-line bg-panel p-8 text-center text-ink-soft">
-          Connect a wallet to start trading on testnet.
+          Connect a wallet to start trading on {network.guarded ? "Base mainnet" : "testnet"}.
         </div>
       ) : locked ? (
         <WaitlistGate address={address} />
@@ -556,21 +585,25 @@ export function TradeApp() {
               Collateral
             </h2>
             <div className="mb-4 flex items-center justify-between text-sm">
-              <span className="text-ink-dim">Wallet tUSDC</span>
+              <span className="text-ink-dim">Wallet {network.collateralLabel}</span>
               <span className="font-mono">
                 {usdcBal !== undefined
                   ? Number(formatUnits(usdcBal as bigint, USDC_DECIMALS)).toLocaleString()
                   : "—"}
               </span>
             </div>
-            <button
-              onClick={mint}
-              disabled={!!busy || wrongNetwork}
-              className="mb-4 w-full rounded-lg border border-line px-4 py-2.5 text-sm text-ink-soft hover:border-amber hover:text-amber disabled:opacity-40"
-            >
-              {busy === "mint" ? "Minting…" : "Faucet: mint 100,000 tUSDC"}
-            </button>
-            <label className="mb-1 block text-xs text-ink-dim">Deposit amount (tUSDC)</label>
+            {network.hasFaucet && (
+              <button
+                onClick={mint}
+                disabled={!!busy || wrongNetwork}
+                className="mb-4 w-full rounded-lg border border-line px-4 py-2.5 text-sm text-ink-soft hover:border-amber hover:text-amber disabled:opacity-40"
+              >
+                {busy === "mint" ? "Minting…" : `Faucet: mint 100,000 ${network.collateralLabel}`}
+              </button>
+            )}
+            <label className="mb-1 block text-xs text-ink-dim">
+              Deposit amount ({network.collateralLabel})
+            </label>
             <input
               value={depositAmt}
               onChange={(e) => setDepositAmt(e.target.value)}
@@ -583,7 +616,7 @@ export function TradeApp() {
                 disabled={!!busy || wrongNetwork}
                 className="w-full rounded-lg bg-amber px-4 py-2.5 text-sm font-semibold text-bg disabled:opacity-40"
               >
-                {busy === "approve" ? "Approving…" : "Approve tUSDC"}
+                {busy === "approve" ? "Approving…" : `Approve ${network.collateralLabel}`}
               </button>
             ) : (
               <button
@@ -597,7 +630,7 @@ export function TradeApp() {
 
             <div className="mt-5 border-t border-line-soft pt-4">
               <div className="mb-1 flex items-center justify-between text-xs text-ink-dim">
-                <span>Withdraw (tUSDC)</span>
+                <span>Withdraw ({network.collateralLabel})</span>
                 <button
                   type="button"
                   onClick={() =>
@@ -832,15 +865,41 @@ export function TradeApp() {
 
       <History />
 
-      <CreateMarket locked={locked} />
+      {network.hasFactory && <CreateMarket locked={locked} />}
 
       {showPnlCard && pnlCardData && (
         <PnlCard data={pnlCardData} onClose={() => setShowPnlCard(false)} />
       )}
 
       <p className="mt-8 text-center text-xs text-ink-dim">
-        Testnet only · Base Sepolia · tokens have no value · not audited
+        {network.guarded
+          ? "Guarded beta · Base mainnet · real funds · capped · not audited"
+          : "Testnet only · Base Sepolia · tokens have no value · not audited"}
       </p>
+    </div>
+  );
+}
+
+function NetworkToggle({
+  networkId,
+  onChange,
+}: {
+  networkId: NetworkId;
+  onChange: (id: NetworkId) => void;
+}) {
+  return (
+    <div className="flex rounded-lg border border-line p-0.5 text-xs">
+      {(["testnet", "mainnet"] as NetworkId[]).map((id) => (
+        <button
+          key={id}
+          onClick={() => onChange(id)}
+          className={`rounded-md px-2.5 py-1.5 font-medium transition ${
+            networkId === id ? "bg-amber/15 text-amber" : "text-ink-dim hover:text-ink"
+          }`}
+        >
+          {id === "testnet" ? "Testnet" : "Mainnet"}
+        </button>
+      ))}
     </div>
   );
 }

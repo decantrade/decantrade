@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KEEPER_API, type MarketKey } from "@/lib/decant";
+import { type MarketKey } from "@/lib/decant";
+import { useNetwork } from "@/lib/network";
 
 type FundingEvent = {
   ts: number;
@@ -35,9 +36,12 @@ function countdown(target?: number) {
   return `${m}m ${sec.toString().padStart(2, "0")}s`;
 }
 
-async function fetchFunding(market: MarketKey): Promise<FundingEvent[] | null> {
+async function fetchFunding(
+  keeperApi: string,
+  market: MarketKey,
+): Promise<FundingEvent[] | null> {
   try {
-    const r = await fetch(`${KEEPER_API}/funding?market=${market}&limit=8`);
+    const r = await fetch(`${keeperApi}/funding?market=${market}&limit=8`);
     if (!r.ok) return null;
     const j = (await r.json()) as { ok?: boolean; funding?: FundingEvent[] };
     return j.ok && j.funding ? j.funding : null;
@@ -57,6 +61,7 @@ export function FundingPanel({
   nextFundingTs?: number;
   intervalSec: number;
 }) {
+  const { network } = useNetwork();
   const [, setTick] = useState(0);
   const [history, setHistory] = useState<FundingEvent[] | null>(null);
 
@@ -68,14 +73,15 @@ export function FundingPanel({
 
   useEffect(() => {
     let cancelled = false;
-    const run = () => fetchFunding(marketKey).then((f) => !cancelled && setHistory(f));
+    const run = () =>
+      fetchFunding(network.keeperApi, marketKey).then((f) => !cancelled && setHistory(f));
     run();
     const t = setInterval(run, 30_000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, [marketKey]);
+  }, [marketKey, network.keeperApi]);
 
   const intervalLabel = intervalSec % 3600 === 0 ? `${intervalSec / 3600}h` : `${Math.round(intervalSec / 60)}m`;
   const positive = (fundingRate ?? 0) >= 0;

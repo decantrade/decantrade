@@ -3,13 +3,8 @@
 import { useEffect, useState } from "react";
 import { formatUnits, type Abi } from "viem";
 import { useAccount, useReadContracts } from "wagmi";
-import {
-  DECANT_CHAIN,
-  KEEPER_API,
-  MARKETS,
-  perpMarketAbi,
-  type MarketKey,
-} from "@/lib/decant";
+import { perpMarketAbi, type MarketKey } from "@/lib/decant";
+import { useNetwork } from "@/lib/network";
 
 type Tab = "activity" | "positions" | "leaderboard";
 
@@ -37,8 +32,6 @@ type LeaderRow = {
   trades: number;
   liquidations: number;
 };
-
-const EXPLORER = "https://sepolia.basescan.org";
 
 function short(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -70,14 +63,14 @@ const KIND_LABEL: Record<string, string> = {
 
 // Module-level fetchers (no setState) so effects can `.then(setState)` — keeps
 // state updates out of the synchronous effect body (react-hooks/set-state-in-effect).
-async function fetchActivity(trader: string): Promise<ActivityEvent[]> {
-  const r = await fetch(`${KEEPER_API}/activity?trader=${trader}&limit=50`);
+async function fetchActivity(keeperApi: string, trader: string): Promise<ActivityEvent[]> {
+  const r = await fetch(`${keeperApi}/activity?trader=${trader}&limit=50`);
   const j = (await r.json()) as { ok: boolean; events?: ActivityEvent[] };
   return j.events ?? [];
 }
 
-async function fetchLeaderboard(sort: string): Promise<LeaderRow[]> {
-  const r = await fetch(`${KEEPER_API}/leaderboard?sort=${sort}&limit=25`);
+async function fetchLeaderboard(keeperApi: string, sort: string): Promise<LeaderRow[]> {
+  const r = await fetch(`${keeperApi}/leaderboard?sort=${sort}&limit=25`);
   const j = (await r.json()) as { ok: boolean; leaderboard?: LeaderRow[] };
   return j.leaderboard ?? [];
 }
@@ -129,6 +122,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 function Activity({ address, isConnected }: { address?: string; isConnected: boolean }) {
+  const { network } = useNetwork();
   const [rows, setRows] = useState<ActivityEvent[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -136,7 +130,7 @@ function Activity({ address, isConnected }: { address?: string; isConnected: boo
     if (!(isConnected && address)) return;
     let cancelled = false;
     const run = () =>
-      fetchActivity(address)
+      fetchActivity(network.keeperApi, address)
         .then((evs) => {
           if (cancelled) return;
           setRows(evs);
@@ -153,7 +147,7 @@ function Activity({ address, isConnected }: { address?: string; isConnected: boo
       cancelled = true;
       clearInterval(t);
     };
-  }, [isConnected, address]);
+  }, [isConnected, address, network.keeperApi]);
 
   if (!isConnected) return <Empty>Connect a wallet to see your trade history.</Empty>;
   if (err) return <Empty>{err}</Empty>;
@@ -182,12 +176,12 @@ function Activity({ address, isConnected }: { address?: string; isConnected: boo
               </td>
               <td className="py-2.5 pr-3 font-mono text-ink-soft">{e.market}</td>
               <td className="py-2.5 pr-3 font-mono text-ink-soft">
-                <Detail e={e} />
+                <Detail e={e} unit={network.collateralLabel} />
               </td>
               <td className="py-2.5 pl-3 text-right">
                 {e.tx ? (
                   <a
-                    href={`${EXPLORER}/tx/${e.tx}`}
+                    href={`${network.explorer}/tx/${e.tx}`}
                     target="_blank"
                     rel="noreferrer"
                     className="font-mono text-xs text-amber hover:opacity-80"
@@ -221,11 +215,11 @@ function ActionBadge({ e }: { e: ActivityEvent }) {
   );
 }
 
-function Detail({ e }: { e: ActivityEvent }) {
+function Detail({ e, unit }: { e: ActivityEvent; unit: string }) {
   switch (e.kind) {
     case "Deposited":
     case "Withdrawn":
-      return <>${num(e.amount)} tUSDC</>;
+      return <>${num(e.amount)} {unit}</>;
     case "PositionOpened":
       return (
         <>
@@ -246,21 +240,23 @@ function Detail({ e }: { e: ActivityEvent }) {
 }
 
 function Positions({ address, isConnected }: { address?: string; isConnected: boolean }) {
+  const { network } = useNetwork();
+  const MARKETS = network.markets;
   const keys = Object.keys(MARKETS) as MarketKey[];
   const contracts = keys.flatMap((k) => [
     {
-      address: MARKETS[k].address,
+      address: MARKETS[k]!.address,
       abi: perpMarketAbi as Abi,
       functionName: "positions",
       args: address ? [address] : [],
-      chainId: DECANT_CHAIN.id,
+      chainId: network.chainId,
     },
     {
-      address: MARKETS[k].address,
+      address: MARKETS[k]!.address,
       abi: perpMarketAbi as Abi,
       functionName: "unrealizedPnl",
       args: address ? [address] : [],
-      chainId: DECANT_CHAIN.id,
+      chainId: network.chainId,
     },
   ]);
 
@@ -306,7 +302,7 @@ function Positions({ address, isConnected }: { address?: string; isConnected: bo
             const pnlNum = pnl !== undefined ? Number(formatUnits(pnl, 18)) : 0;
             return (
               <tr key={k} className="border-b border-line-soft last:border-0">
-                <td className="py-2.5 pr-3 font-mono">{MARKETS[k].label}</td>
+                <td className="py-2.5 pr-3 font-mono">{MARKETS[k]!.label}</td>
                 <td className={`py-2.5 pr-3 font-medium ${isLong ? "text-green" : "text-wine"}`}>
                   {isLong ? "Long" : "Short"}
                 </td>
@@ -374,13 +370,14 @@ function LeaderTable({
   sort: "realizedPnl" | "volume";
   address?: string;
 }) {
+  const { network } = useNetwork();
   const [rows, setRows] = useState<LeaderRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const run = () =>
-      fetchLeaderboard(sort)
+      fetchLeaderboard(network.keeperApi, sort)
         .then((lb) => {
           if (cancelled) return;
           setRows(lb);
@@ -397,7 +394,7 @@ function LeaderTable({
       cancelled = true;
       clearInterval(t);
     };
-  }, [sort]);
+  }, [sort, network.keeperApi]);
 
   return (
     <>
@@ -433,7 +430,7 @@ function LeaderTable({
                     <td className="py-2.5 pr-3 font-mono text-ink-dim">{i + 1}</td>
                     <td className="py-2.5 pr-3 font-mono">
                       <a
-                        href={`${EXPLORER}/address/${r.trader}`}
+                        href={`${network.explorer}/address/${r.trader}`}
                         target="_blank"
                         rel="noreferrer"
                         className="hover:text-amber"
