@@ -52,6 +52,28 @@ npx wrangler secret put RUN_TOKEN
 npx wrangler deploy
 ```
 
+## Mainnet (Base, chain 8453)
+
+A **separate** worker (`decant-keeper-mainnet`) runs against the guarded Base
+mainnet market, using its own config + KV namespace so the testnet keeper above
+is untouched. See `wrangler.mainnet.jsonc`:
+
+- `vars.RPC_URL` — `https://base-rpc.publicnode.com` (more reliable than the
+  rate-limited `mainnet.base.org` for `eth_getLogs` + tx submission).
+- `vars.CHAIN_ID` — `8453`. **Required on mainnet:** the worker spreads
+  `baseSepolia` for its chain object, so without this the signed txs would carry
+  the wrong EIP-155 chainId (84532) and get rejected.
+- `vars.MARKETS` — `ETH:0x010820DC816Aa354C05770cEb7A8567d123DBbE4`.
+
+Deploy / set secrets with `--config wrangler.mainnet.jsonc`:
+
+```bash
+npx wrangler kv namespace create KEEPER_KV_MAINNET   # paste id into wrangler.mainnet.jsonc
+printf '0x%s' "$KEY" | npx wrangler secret put KEEPER_PRIVATE_KEY --config wrangler.mainnet.jsonc
+npx wrangler secret put RUN_TOKEN --config wrangler.mainnet.jsonc
+npx wrangler deploy --config wrangler.mainnet.jsonc
+```
+
 ## HTTP endpoints
 
 The worker also serves a small HTTP surface on its `workers.dev` URL:
