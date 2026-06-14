@@ -135,6 +135,7 @@ export function TradeApp() {
   const [tpPrice, setTpPrice] = useState("");
   const [slPrice, setSlPrice] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [marginAdjustAmt, setMarginAdjustAmt] = useState("");
 
   function changeNetwork(id: NetworkId) {
     setNetworkId(id);
@@ -252,6 +253,16 @@ export function TradeApp() {
     freeColl !== undefined ? (freeColl as bigint) / 10n ** BigInt(18 - USDC_DECIMALS) : 0n;
   const overWithdraw = withdrawWad > freeCollUnits;
 
+  // addMargin / removeMargin take WAD amounts (margin + freeCollateral are WAD).
+  let marginAdjustWad = 0n;
+  try {
+    marginAdjustWad = parseUnits(marginAdjustAmt || "0", 18);
+  } catch {
+    marginAdjustWad = 0n;
+  }
+  const overAddMargin = marginAdjustWad > (freeColl !== undefined ? (freeColl as bigint) : 0n);
+  const overRemoveMargin = marginAdjustWad >= (pos ? pos[2] : 0n);
+
   // ----- actions -----
   const mint = () =>
     run("mint", () =>
@@ -310,6 +321,37 @@ export function TradeApp() {
         abi: perpMarketAbi as Abi,
         functionName: "closePosition",
         args: [],
+      }),
+    );
+
+  // Close a fraction of the position (WAD; 1e18 = 100%).
+  const closeFraction = (fraction: bigint, label: string) =>
+    run(label, () =>
+      writeContractAsync({
+        address: market.address,
+        abi: perpMarketAbi as Abi,
+        functionName: "closePartial",
+        args: [fraction],
+      }),
+    );
+
+  const addMargin = () =>
+    run("addMargin", () =>
+      writeContractAsync({
+        address: market.address,
+        abi: perpMarketAbi as Abi,
+        functionName: "addMargin",
+        args: [marginAdjustWad],
+      }),
+    );
+
+  const removeMargin = () =>
+    run("removeMargin", () =>
+      writeContractAsync({
+        address: market.address,
+        abi: perpMarketAbi as Abi,
+        functionName: "removeMargin",
+        args: [marginAdjustWad],
       }),
     );
 
@@ -740,21 +782,76 @@ export function TradeApp() {
                   </p>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setShowPnlCard(true)}
-                    className="rounded-lg border border-line px-4 py-2.5 text-sm text-ink-soft hover:border-amber hover:text-amber"
-                  >
-                    Share PnL
-                  </button>
-                  <button
-                    onClick={close}
-                    disabled={!!busy || wrongNetwork}
-                    className="rounded-lg border border-wine bg-wine/10 px-4 py-2.5 text-sm font-semibold text-wine disabled:opacity-40"
-                  >
-                    {busy === "close" ? "Closing…" : "Close position"}
-                  </button>
+                {/* Adjust margin */}
+                <div className="mt-4 rounded-lg border border-line-soft bg-bg/40 p-3">
+                  <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                    Adjust margin
+                  </p>
+                  <input
+                    value={marginAdjustAmt}
+                    onChange={(e) => setMarginAdjustAmt(e.target.value)}
+                    inputMode="decimal"
+                    placeholder={`Amount (${network.collateralLabel})`}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-amber"
+                  />
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={addMargin}
+                      disabled={!!busy || wrongNetwork || marginAdjustWad === 0n || overAddMargin}
+                      className="rounded-lg border border-green px-4 py-2.5 text-sm font-semibold text-green disabled:opacity-40"
+                    >
+                      {busy === "addMargin" ? "Adding…" : overAddMargin ? "Low free coll." : "Add"}
+                    </button>
+                    <button
+                      onClick={removeMargin}
+                      disabled={!!busy || wrongNetwork || marginAdjustWad === 0n || overRemoveMargin}
+                      className="rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink-soft hover:border-amber hover:text-amber disabled:opacity-40"
+                    >
+                      {busy === "removeMargin" ? "Removing…" : "Remove"}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] leading-relaxed text-ink-dim">
+                    Add collateral to cut liquidation risk, or remove free margin (kept under max
+                    leverage &amp; maintenance).
+                  </p>
                 </div>
+
+                {/* Close (partial or full) */}
+                <div className="mt-3">
+                  <p className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                    Close position
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => closeFraction(250000000000000000n, "close25")}
+                      disabled={!!busy || wrongNetwork}
+                      className="rounded-lg border border-wine/60 bg-wine/5 px-3 py-2.5 text-sm font-semibold text-wine disabled:opacity-40"
+                    >
+                      {busy === "close25" ? "…" : "25%"}
+                    </button>
+                    <button
+                      onClick={() => closeFraction(500000000000000000n, "close50")}
+                      disabled={!!busy || wrongNetwork}
+                      className="rounded-lg border border-wine/60 bg-wine/5 px-3 py-2.5 text-sm font-semibold text-wine disabled:opacity-40"
+                    >
+                      {busy === "close50" ? "…" : "50%"}
+                    </button>
+                    <button
+                      onClick={close}
+                      disabled={!!busy || wrongNetwork}
+                      className="rounded-lg border border-wine bg-wine/10 px-3 py-2.5 text-sm font-semibold text-wine disabled:opacity-40"
+                    >
+                      {busy === "close" ? "Closing…" : "100%"}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowPnlCard(true)}
+                  className="mt-3 w-full rounded-lg border border-line px-4 py-2.5 text-sm text-ink-soft hover:border-amber hover:text-amber"
+                >
+                  Share PnL
+                </button>
               </>
             ) : (
               <>
