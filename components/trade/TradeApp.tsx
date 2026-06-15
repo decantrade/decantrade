@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatUnits, parseUnits, type Abi } from "viem";
 import {
@@ -17,9 +17,10 @@ import {
   USDC_DECIMALS,
   erc20Abi,
   perpMarketAbi,
-  type MarketKey,
+  type MarketInfo,
 } from "@/lib/decant";
 import { useNetwork } from "@/lib/network";
+import { useFactoryMarkets } from "@/lib/useFactoryMarkets";
 import dynamic from "next/dynamic";
 import { WALLETCONNECT_PROJECT_ID } from "@/lib/wagmi";
 import { PriceChart } from "./PriceChart";
@@ -27,6 +28,7 @@ import { History } from "./History";
 import { PnlCard, type PnlCardData } from "./PnlCard";
 import { FundingPanel } from "./FundingPanel";
 import { KeeperStatus } from "./KeeperStatus";
+import { LaunchMarket } from "./LaunchMarket";
 
 // Client-only so the WalletConnect SDK stays out of the server worker bundle.
 const WalletConnectOption = dynamic(() => import("./WalletConnectOption"), {
@@ -98,12 +100,35 @@ export function TradeApp() {
   const { network } = useNetwork();
   const DECANT_CHAIN = network.chain;
   const ADDRESSES = network.addresses;
-  const MARKETS = network.markets;
-  const marketKeys = Object.keys(MARKETS) as MarketKey[];
 
-  const [marketKey, setMarketKey] = useState<MarketKey>("ETH");
+  // Curated markets (static) merged with any launched permissionlessly through
+  // the factory (discovered on-chain). Keyed by symbol; dedup by address.
+  const { markets: discovered, refetch: refetchDiscovered } = useFactoryMarkets(network);
+  const MARKETS = useMemo<Record<string, MarketInfo>>(() => {
+    const m: Record<string, MarketInfo> = {};
+    for (const [k, v] of Object.entries(network.markets)) {
+      if (v) m[k] = { ...v, source: "curated" };
+    }
+    const curatedAddrs = new Set(
+      Object.values(network.markets)
+        .filter((v): v is MarketInfo => !!v)
+        .map((v) => v.address.toLowerCase()),
+    );
+    for (const d of discovered) {
+      if (curatedAddrs.has(d.address.toLowerCase())) continue;
+      let key = d.symbol.toUpperCase();
+      if (m[key]) key = `${key}-${d.address.slice(2, 6)}`;
+      m[key] = d;
+    }
+    return m;
+  }, [network.markets, discovered]);
+  const marketKeys = Object.keys(MARKETS);
+
+  const [marketKey, setMarketKey] = useState<string>("ETH");
+  const [showLaunch, setShowLaunch] = useState(false);
   // Fall back to the first available market when the selected one isn't listed.
-  const activeMarketKey: MarketKey = MARKETS[marketKey] ? marketKey : marketKeys[0];
+  const activeMarketKey: string = MARKETS[marketKey] ? marketKey : (marketKeys[0] ?? "ETH");
+  // Always defined: both networks ship at least the curated markets.
   const market = MARKETS[activeMarketKey]!;
   const wrongNetwork = isConnected && chainId !== network.chainId;
 
@@ -636,7 +661,7 @@ export function TradeApp() {
 
       {/* Market tabs */}
       <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
-        {(Object.keys(MARKETS) as MarketKey[]).map((k) => (
+        {marketKeys.map((k) => (
           <button
             key={k}
             onClick={() => setMarketKey(k)}
@@ -647,8 +672,19 @@ export function TradeApp() {
             }`}
           >
             {MARKETS[k]!.label}
+            {MARKETS[k]!.source === "factory" && (
+              <span className="ml-1.5 text-[10px] uppercase tracking-wide text-ink-dim">launched</span>
+            )}
           </button>
         ))}
+        {network.hasFactory && (
+          <button
+            onClick={() => setShowLaunch(true)}
+            className="shrink-0 rounded-lg border border-dashed border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-amber hover:text-amber"
+          >
+            + Launch market
+          </button>
+        )}
       </div>
 
       {/* Verify the active market + collateral on the block explorer */}
@@ -673,7 +709,7 @@ export function TradeApp() {
       </div>
 
       {/* Price chart */}
-      <PriceChart marketKey={activeMarketKey} />
+      <PriceChart marketKey={activeMarketKey} label={market.label} />
 
       {/* Key market + account stats */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1245,6 +1281,21 @@ export function TradeApp() {
 
       {showPnlCard && pnlCardData && (
         <PnlCard data={pnlCardData} onClose={() => setShowPnlCard(false)} />
+      )}
+
+      {showLaunch && network.hasFactory && (
+        <LaunchMarket
+          network={network}
+          onClose={() => setShowLaunch(false)}
+          onLaunched={(created) => {
+            setShowLaunch(false);
+            refetchDiscovered();
+            if (created) {
+              // jump to the freshly launched market once discovery refreshes
+              setTimeout(() => refetchDiscovered(), 1500);
+            }
+          }}
+        />
       )}
 
       <p className="mt-8 text-center text-xs text-ink-dim">

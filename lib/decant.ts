@@ -11,7 +11,14 @@ export const ADDRESSES = {
 
 export type MarketKey = "ETH" | "BTC" | "SOL" | "SPCX";
 
-export type MarketInfo = { label: string; symbol: string; address: `0x${string}` };
+export type MarketInfo = {
+  label: string;
+  symbol: string;
+  address: `0x${string}`;
+  // "factory" = permissionlessly launched via MarketFactory (discovered at runtime).
+  source?: "curated" | "factory";
+  baseToken?: `0x${string}`;
+};
 
 export const MARKETS: Record<MarketKey, MarketInfo> = {
   ETH: {
@@ -165,6 +172,84 @@ export const erc20Abi = [
       { name: "amount", type: "uint256" },
     ],
     outputs: [],
+  },
+  {
+    type: "function",
+    name: "symbol",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "string" }],
+  },
+] as const;
+
+// Uniswap V3 TWAP oracle — used to derive a discovered market's base token + price.
+export const twapOracleAbi = [
+  {
+    type: "function",
+    name: "baseToken",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
+    name: "pool",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
+    name: "twapWindow",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint32" }],
+  },
+  {
+    type: "function",
+    name: "getPrice",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+] as const;
+
+// Minimal Uniswap V3 pool surface for client-side pre-validation of a launch.
+export const uniV3PoolAbi = [
+  { type: "function", name: "token0", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "token1", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "fee", stateMutability: "view", inputs: [], outputs: [{ type: "uint24" }] },
+  { type: "function", name: "liquidity", stateMutability: "view", inputs: [], outputs: [{ type: "uint128" }] },
+  {
+    type: "function",
+    name: "slot0",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      { name: "sqrtPriceX96", type: "uint160" },
+      { name: "tick", type: "int24" },
+      { name: "observationIndex", type: "uint16" },
+      { name: "observationCardinality", type: "uint16" },
+      { name: "observationCardinalityNext", type: "uint16" },
+      { name: "feeProtocol", type: "uint8" },
+      { name: "unlocked", type: "bool" },
+    ],
+  },
+] as const;
+
+// Canonical Uniswap V3 factory (getPool) — used to pre-validate a launch the
+// same way MarketFactory's on-chain G1 check does.
+export const uniV3FactoryAbi = [
+  {
+    type: "function",
+    name: "getPool",
+    stateMutability: "view",
+    inputs: [
+      { name: "tokenA", type: "address" },
+      { name: "tokenB", type: "address" },
+      { name: "fee", type: "uint24" },
+    ],
+    outputs: [{ type: "address" }],
   },
 ] as const;
 
@@ -342,6 +427,20 @@ export const perpMarketAbi = [
     inputs: [],
     outputs: [{ type: "uint256" }],
   },
+  {
+    type: "function",
+    name: "oracle",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
+    name: "maxOpenInterest",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
 ] as const;
 
 // MarketFactory — permissionless launcher (createPythMarket / createTwapMarket).
@@ -355,7 +454,56 @@ export const factoryAbi = [
   },
   {
     type: "function",
+    name: "allMarkets",
+    stateMutability: "view",
+    inputs: [{ name: "index", type: "uint256" }],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
     name: "minBaseReserve",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "minTwapWindow",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint32" }],
+  },
+  {
+    type: "function",
+    name: "univ3Factory",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
+    name: "minPoolLiquidity",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint128" }],
+  },
+  {
+    type: "function",
+    name: "twapMaxLeverage",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "minCreatorInsurance",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "launchFee",
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "uint256" }],

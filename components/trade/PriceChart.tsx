@@ -10,10 +10,10 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { MARKETS, type MarketKey } from "@/lib/decant";
-
-// Coinbase Exchange product ids for each market (public, no key, CORS-enabled).
-const PRODUCT: Record<MarketKey, string> = {
+// Coinbase Exchange product ids, keyed by market symbol (public, no key,
+// CORS-enabled). Markets without an entry here (e.g. permissionlessly launched
+// tokens) have no external spot feed and render an oracle-priced placeholder.
+const PRODUCT: Record<string, string> = {
   ETH: "ETH-USD",
   BTC: "BTC-USD",
   SOL: "SOL-USD",
@@ -54,7 +54,14 @@ async function fetchCandles(product: string, granularity: number): Promise<Candl
     .sort((a, b) => (a.time as number) - (b.time as number));
 }
 
-export function PriceChart({ marketKey }: { marketKey: MarketKey }) {
+export function PriceChart({
+  marketKey,
+  label,
+}: {
+  marketKey: string;
+  label: string;
+}) {
+  const product = PRODUCT[marketKey];
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -70,6 +77,7 @@ export function PriceChart({ marketKey }: { marketKey: MarketKey }) {
 
   // Create the chart once.
   useEffect(() => {
+    if (!product) return;
     const el = containerRef.current;
     if (!el) return;
     const chart = createChart(el, {
@@ -102,12 +110,13 @@ export function PriceChart({ marketKey }: { marketKey: MarketKey }) {
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, []);
+  }, [product]);
 
   // Load data whenever market or timeframe changes.
   useEffect(() => {
+    if (!product) return;
     let cancelled = false;
-    fetchCandles(PRODUCT[marketKey], granularity)
+    fetchCandles(product, granularity)
       .then((data) => {
         if (cancelled || !seriesRef.current) return;
         seriesRef.current.setData(data);
@@ -121,13 +130,32 @@ export function PriceChart({ marketKey }: { marketKey: MarketKey }) {
     return () => {
       cancelled = true;
     };
-  }, [marketKey, granularity]);
+  }, [marketKey, granularity, product]);
+
+  // Markets launched permissionlessly are priced purely off the Uniswap V3 TWAP
+  // oracle — there is no centralized-exchange candle feed to chart.
+  if (!product) {
+    return (
+      <div className="mb-6 rounded-xl border border-line bg-panel p-4">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-ink-soft">
+          {label} · price
+        </h2>
+        <div className="flex h-[160px] flex-col items-center justify-center gap-1 text-center">
+          <span className="text-sm text-ink-soft">Priced by Uniswap V3 TWAP</span>
+          <span className="max-w-xs text-xs text-ink-dim">
+            This market was launched permissionlessly. Its index is the pool&apos;s
+            time-weighted average price — see Mark / Index below for the live oracle value.
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-6 rounded-xl border border-line bg-panel p-4">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
-          {MARKETS[marketKey].label} · price
+          {label} · price
         </h2>
         <div className="flex gap-1">
           {TIMEFRAMES.map((tf) => (

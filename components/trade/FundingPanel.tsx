@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type MarketKey } from "@/lib/decant";
 import { useNetwork } from "@/lib/network";
 
 type FundingEvent = {
@@ -38,7 +37,7 @@ function countdown(target?: number) {
 
 async function fetchFunding(
   keeperApi: string,
-  market: MarketKey,
+  market: string,
 ): Promise<FundingEvent[] | null> {
   try {
     const r = await fetch(`${keeperApi}/funding?market=${market}&limit=8`);
@@ -56,7 +55,7 @@ export function FundingPanel({
   nextFundingTs,
   intervalSec,
 }: {
-  marketKey: MarketKey;
+  marketKey: string;
   fundingRate?: number;
   nextFundingTs?: number;
   intervalSec: number;
