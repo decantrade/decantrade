@@ -838,7 +838,7 @@ export function TradeApp() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-5">
+        <div className="grid items-start gap-5 md:grid-cols-5">
           {/* Collateral */}
           <div className="rounded-xl border border-line bg-panel p-4 sm:p-5 md:col-span-2">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-ink-soft">
