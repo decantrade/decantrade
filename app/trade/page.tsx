@@ -19,9 +19,9 @@ const MOBILE_SOCIALS: MobileNavLink[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "Trade · Decant testnet",
+  title: "Trade · Decant",
   description:
-    "Trade perpetual futures on the Decant testnet app — ETH/USD and BTC/USD vAMM markets on Base Sepolia.",
+    "Trade perpetual futures on Decant — ETH/USD, BTC/USD and SOL/USD vAMM markets on Base mainnet.",
   robots: { index: true, follow: true },
 };
 

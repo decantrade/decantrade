@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { formatUnits, parseUnits, type Abi } from "viem";
 import {
   useAccount,
@@ -19,13 +18,11 @@ import {
   erc20Abi,
   perpMarketAbi,
   type MarketKey,
-  type NetworkId,
 } from "@/lib/decant";
 import { useNetwork } from "@/lib/network";
 import dynamic from "next/dynamic";
 import { WALLETCONNECT_PROJECT_ID } from "@/lib/wagmi";
 import { PriceChart } from "./PriceChart";
-import { CreateMarket } from "./CreateMarket";
 import { History } from "./History";
 import { PnlCard, type PnlCardData } from "./PnlCard";
 import { FundingPanel } from "./FundingPanel";
@@ -94,38 +91,21 @@ export function TradeApp() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
-  const { network, networkId, setNetworkId } = useNetwork();
+  const { network } = useNetwork();
   const DECANT_CHAIN = network.chain;
   const ADDRESSES = network.addresses;
   const MARKETS = network.markets;
   const marketKeys = Object.keys(MARKETS) as MarketKey[];
 
   const [marketKey, setMarketKey] = useState<MarketKey>("ETH");
-  // Fall back to the first available market when the selected one isn't on the
-  // active network (e.g. switching from testnet BTC to mainnet, which is ETH-only).
+  // Fall back to the first available market when the selected one isn't listed.
   const activeMarketKey: MarketKey = MARKETS[marketKey] ? marketKey : marketKeys[0];
   const market = MARKETS[activeMarketKey]!;
   const wrongNetwork = isConnected && chainId !== network.chainId;
 
-  // Testnet trading is a waitlist-member perk: only wallets that joined the
-  // waitlist can trade. On mainnet the gate is enforced on-chain ($DECANT
-  // holding / allowlist), so the UI doesn't waitlist-gate. `member` is
-  // undefined while loading.
-  const { data: member } = useQuery({
-    queryKey: ["waitlist-member", address],
-    enabled: isConnected && !!address && networkId === "testnet",
-    staleTime: 60_000,
-    queryFn: async (): Promise<boolean | null> => {
-      const r = await fetch(`/api/waitlist/check?address=${address}`);
-      const d = (await r.json()) as { ok?: boolean; member?: boolean };
-      return d?.ok ? !!d.member : null;
-    },
-  });
-  const locked = networkId === "testnet" && isConnected && member === false;
-
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [depositAmt, setDepositAmt] = useState("1000");
+  const [depositAmt, setDepositAmt] = useState("100");
   const [withdrawAmt, setWithdrawAmt] = useState("");
   const [margin, setMargin] = useState("100");
   const [leverage, setLeverage] = useState(5);
@@ -136,13 +116,6 @@ export function TradeApp() {
   const [slPrice, setSlPrice] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [marginAdjustAmt, setMarginAdjustAmt] = useState("");
-
-  function changeNetwork(id: NetworkId) {
-    setNetworkId(id);
-    // Mainnet caps deposits at $200/wallet; seed a within-cap default.
-    setDepositAmt(id === "mainnet" ? "100" : "1000");
-    setError(null);
-  }
 
   // ----- reads -----
   const marketRead = (name: string, args: unknown[] = []) =>
@@ -505,12 +478,11 @@ export function TradeApp() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-amber">
-            {network.guarded ? "── Mainnet beta" : "── Testnet app"}
+            ── Mainnet beta
           </p>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Trade</h1>
         </div>
         <div className="flex items-center gap-2">
-          <NetworkToggle networkId={networkId} onChange={changeNetwork} />
           <Link
             href="/portfolio"
             className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-amber hover:text-amber"
@@ -615,10 +587,8 @@ export function TradeApp() {
 
       {!isConnected ? (
         <div className="rounded-xl border border-line bg-panel p-8 text-center text-ink-soft">
-          Connect a wallet to start trading on {network.guarded ? "Base mainnet" : "testnet"}.
+          Connect a wallet to start trading on Base mainnet.
         </div>
-      ) : locked ? (
-        <WaitlistGate address={address} />
       ) : (
         <div className="grid gap-5 md:grid-cols-5">
           {/* Collateral */}
@@ -962,41 +932,13 @@ export function TradeApp() {
 
       <History />
 
-      {network.hasFactory && <CreateMarket locked={locked} />}
-
       {showPnlCard && pnlCardData && (
         <PnlCard data={pnlCardData} onClose={() => setShowPnlCard(false)} />
       )}
 
       <p className="mt-8 text-center text-xs text-ink-dim">
-        {network.guarded
-          ? "Guarded beta · Base mainnet · real funds · capped · not audited"
-          : "Testnet only · Base Sepolia · tokens have no value · not audited"}
+        Guarded beta · Base mainnet · real funds · capped · not audited
       </p>
-    </div>
-  );
-}
-
-function NetworkToggle({
-  networkId,
-  onChange,
-}: {
-  networkId: NetworkId;
-  onChange: (id: NetworkId) => void;
-}) {
-  return (
-    <div className="flex rounded-lg border border-line p-0.5 text-xs">
-      {(["testnet", "mainnet"] as NetworkId[]).map((id) => (
-        <button
-          key={id}
-          onClick={() => onChange(id)}
-          className={`rounded-md px-2.5 py-1.5 font-medium transition ${
-            networkId === id ? "bg-amber/15 text-amber" : "text-ink-dim hover:text-ink"
-          }`}
-        >
-          {id === "testnet" ? "Testnet" : "Mainnet"}
-        </button>
-      ))}
     </div>
   );
 }
@@ -1048,39 +990,6 @@ function PreviewRow({
     <div className="flex items-center justify-between py-0.5 text-xs">
       <span className="text-ink-dim">{label}</span>
       <span className={`font-mono ${valueClass}`}>{value}</span>
-    </div>
-  );
-}
-
-function WaitlistGate({ address }: { address?: `0x${string}` }) {
-  return (
-    <div className="rounded-xl border border-amber/40 bg-amber/5 p-8 text-center">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-amber">
-        ── Waitlist only
-      </p>
-      <h2 className="mt-2 text-lg font-semibold tracking-tight">
-        Testnet trading is for waitlist members
-      </h2>
-      <p className="mx-auto mt-3 max-w-md text-sm text-ink-soft">
-        {address ? (
-          <>
-            <span className="font-mono text-ink">
-              {address.slice(0, 6)}…{address.slice(-4)}
-            </span>{" "}
-            isn&apos;t on the Decant waitlist yet.
-          </>
-        ) : (
-          <>This wallet isn&apos;t on the Decant waitlist yet.</>
-        )}{" "}
-        Join the waitlist with this wallet to unlock deposits, leverage and
-        market launches. Charts and prices stay open to everyone.
-      </p>
-      <Link
-        href="/#waitlist"
-        className="mt-5 inline-block rounded-lg bg-amber px-5 py-2.5 text-sm font-semibold text-bg hover:opacity-90"
-      >
-        Join the waitlist →
-      </Link>
     </div>
   );
 }
