@@ -18,9 +18,9 @@ const MOBILE_SOCIALS: MobileNavLink[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "Portfolio · Decant testnet",
+  title: "Portfolio · Decant",
   description:
-    "Your Decant testnet portfolio: account equity, free collateral, open positions across markets, and realized PnL.",
+    "Your Decant portfolio: account equity, free collateral, open positions across markets, and realized PnL.",
   robots: { index: false, follow: true },
 };
 
@@ -45,12 +45,12 @@ export default function PortfolioPage() {
       <main className="flex-1">
         <div className="mx-auto max-w-5xl px-5 py-10">
           <div className="mb-8">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-amber">── Testnet app</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-amber">── Mainnet beta</p>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Portfolio</h1>
           </div>
           <Portfolio />
           <p className="mt-8 text-center text-xs text-ink-dim">
-            Testnet only · Base Sepolia · tokens have no value · not audited
+            Guarded beta · Base mainnet · real funds · capped · not audited
           </p>
         </div>
       </main>
