@@ -6,6 +6,10 @@ solc = "0.8.24"
 evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
+# via_ir keeps MarketFactory under the EIP-170 24576-byte limit (it embeds the
+# creation code of PerpMarket + both oracles). Without it the factory is ~25.4KB
+# and cannot be deployed to mainnet.
+via_ir = true
 ffi = false
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
