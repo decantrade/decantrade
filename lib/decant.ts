@@ -263,6 +263,7 @@ export const perpMarketAbi = [
       { name: "openNotional", type: "uint256" },
       { name: "margin", type: "uint256" },
       { name: "lastPremium", type: "int256" },
+      { name: "entryPrice", type: "uint256" },
     ],
   },
   {
