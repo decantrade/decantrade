@@ -196,7 +196,7 @@ export function MobileNav({
 
               <div className="border-t border-line px-5 py-4">
                 <span className="mb-3 inline-block rounded-full border border-amber/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-amber">
-                  Base · Testnet
+                  Base · Mainnet
                 </span>
                 <div className="flex items-center gap-5">
                   {socials.map((s) => (

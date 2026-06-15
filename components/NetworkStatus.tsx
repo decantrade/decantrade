@@ -58,7 +58,7 @@ export function NetworkStatus() {
               Live readout
             </h2>
             <span className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">
-              [readout] base · testnet · pre-audit
+              [readout] base · mainnet · pre-audit
             </span>
           </div>
         </Reveal>

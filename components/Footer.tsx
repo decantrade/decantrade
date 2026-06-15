@@ -65,7 +65,7 @@ export function Footer() {
 
         <div className="mt-6 flex flex-col gap-3 border-t border-line pt-6 text-[11px] text-ink-dim sm:flex-row sm:items-center sm:justify-between">
           <span className="uppercase tracking-[0.15em]">
-            testnet · pre-audit · not real money
+            base mainnet · beta · unaudited
           </span>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
             <span>
