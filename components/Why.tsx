@@ -16,8 +16,8 @@ export function Why() {
             <p className="mt-6 text-sm leading-7 text-ink-soft">
               To decant is to pour a liquid off its sediment — keeping the clear
               part, leaving the murk behind. That is the thesis: clean,
-              permissionless price discovery for any token on Base, without the
-              gatekeepers and opaque risk that muddy centralized venues.
+              on-chain price discovery for Base perps, without the opaque risk
+              and discretionary controls that muddy centralized venues.
             </p>
             <p className="mt-4 text-sm leading-7 text-ink-soft">
               Decant is an EVM-native perpetuals engine. Every market is
@@ -40,8 +40,8 @@ export function Why() {
                 v: "Margin, funding and liquidation logic are on-chain and auditable.",
               },
               {
-                k: "No gatekeepers",
-                v: "Anyone can list a market. Anyone can provide liquidity. Anyone can trade.",
+                k: "Non-custodial",
+                v: "Collateral stays in the contract under your control — no admin can seize or force-close it.",
               },
               {
                 k: "Built for Base",

@@ -71,12 +71,12 @@ export function Footer() {
             <span>
               Built by{" "}
               <a
-                href="https://x.com/avantisfi"
+                href="https://x.com/_decantrade"
                 target="_blank"
                 rel="noreferrer"
                 className="text-ink-soft transition-colors hover:text-amber"
               >
-                @avantisfi
+                @_decantrade
               </a>
             </span>
             <span>

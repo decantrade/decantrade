@@ -40,8 +40,8 @@ export function NetworkStatus() {
     },
     {
       label: "Max leverage",
-      value: "50×",
-      sub: "per-market configurable",
+      value: "10×",
+      sub: "guarded-beta cap",
       accent: "text-ink",
     },
   ];

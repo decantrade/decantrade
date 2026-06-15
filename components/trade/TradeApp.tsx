@@ -175,7 +175,7 @@ export function TradeApp() {
 
   const pos = position as readonly [bigint, bigint, bigint, bigint] | undefined;
   const hasPosition = !!pos && pos[0] !== 0n;
-  const maxLevNum = maxLev ? Number((maxLev as bigint) / WAD) : 50;
+  const maxLevNum = maxLev ? Number((maxLev as bigint) / WAD) : 10;
   const levPresets = Array.from(
     new Set([1, 2, 5, 10, 25, maxLevNum].filter((v) => v >= 1 && v <= maxLevNum)),
   ).sort((a, b) => a - b);

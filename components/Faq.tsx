@@ -3,7 +3,7 @@ import { Reveal } from "./Reveal";
 const FAQS = [
   {
     q: "What is Decant?",
-    a: "A permissionless perpetual-futures protocol on Base. Anyone can launch a leveraged market for any Base token, and anyone with a wallet can trade it long or short.",
+    a: "An on-chain perpetual-futures protocol on Base. Trade ETH, BTC and SOL perps long or short with USDC collateral. It's a guarded beta today; more markets and permissionless launches follow after an external audit.",
   },
   {
     q: "Is it live with real money?",
@@ -23,7 +23,7 @@ const FAQS = [
   },
   {
     q: "Which wallets are supported?",
-    a: "Coinbase Wallet and any injected wallet such as MetaMask or Rabbit. WalletConnect (mobile QR) support is coming.",
+    a: "Coinbase Wallet, WalletConnect (mobile QR), and any injected wallet such as MetaMask or Rabby.",
   },
 ];
 
