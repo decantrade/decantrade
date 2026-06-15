@@ -34,6 +34,9 @@ const WalletConnectOption = dynamic(() => import("./WalletConnectOption"), {
 
 const WAD = 10n ** 18n;
 
+// Client-side limit order (entry trigger), persisted per market+wallet.
+type LimitOrder = { isLong: boolean; margin: string; leverage: number; price: number };
+
 function fmtUsd(wad?: bigint, dp = 2) {
   if (wad === undefined) return "—";
   return Number(formatUnits(wad, 18)).toLocaleString(undefined, {
@@ -116,6 +119,9 @@ export function TradeApp() {
   const [slPrice, setSlPrice] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [marginAdjustAmt, setMarginAdjustAmt] = useState("");
+  // Client-side limit order (auto-open while this tab is open). Keyed per market.
+  const [limitPrice, setLimitPrice] = useState("");
+  const [pendingLimit, setPendingLimit] = useState<LimitOrder | null>(null);
 
   // ----- reads -----
   const marketRead = (name: string, args: unknown[] = []) =>
@@ -277,15 +283,42 @@ export function TradeApp() {
       }),
     );
 
-  const open = () =>
+  const openWith = (isLong: boolean, marginStr: string, lev: number) =>
     run("open", () =>
       writeContractAsync({
         address: market.address,
         abi: perpMarketAbi as Abi,
         functionName: "openPosition",
-        args: [side === "long", parseUnits(margin || "0", 18), parseUnits(String(effLeverage), 18)],
+        args: [isLong, parseUnits(marginStr || "0", 18), parseUnits(String(lev), 18)],
       }),
     );
+
+  const open = () => openWith(side === "long", margin, effLeverage);
+
+  // ----- limit order place / cancel (persisted in localStorage) -----
+  const limitKey = address
+    ? `decant:limit:${network.chainId}:${market.address}:${address}`
+    : null;
+
+  const placeLimit = () => {
+    const price = Number(limitPrice);
+    if (!(price > 0) || !limitKey) return;
+    const order: LimitOrder = { isLong: side === "long", margin, leverage: effLeverage, price };
+    setPendingLimit(order);
+    try {
+      localStorage.setItem(limitKey, JSON.stringify(order));
+    } catch {}
+    setLimitPrice("");
+  };
+
+  const cancelLimit = () => {
+    setPendingLimit(null);
+    if (limitKey) {
+      try {
+        localStorage.removeItem(limitKey);
+      } catch {}
+    }
+  };
 
   const close = () =>
     run("close", () =>
@@ -446,6 +479,42 @@ export function TradeApp() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markF, hasPosition, busy, tpPrice, slPrice, posIsLong]);
+
+  // ----- client-side limit-order auto-open (runs only while this tab is open) -----
+  // Restore any persisted order when the market or wallet changes.
+  useEffect(() => {
+    let order: LimitOrder | null = null;
+    if (limitKey) {
+      try {
+        const raw = localStorage.getItem(limitKey);
+        order = raw ? (JSON.parse(raw) as LimitOrder) : null;
+      } catch {
+        order = null;
+      }
+    }
+    // Defer out of the effect body (avoids set-state-in-effect cascade).
+    queueMicrotask(() => setPendingLimit(order));
+  }, [limitKey]);
+
+  const limitFired = useRef(false);
+  useEffect(() => {
+    limitFired.current = false;
+  }, [limitKey, hasPosition]);
+  useEffect(() => {
+    if (!pendingLimit || hasPosition || busy || markF === undefined || limitFired.current) return;
+    const hit = pendingLimit.isLong ? markF <= pendingLimit.price : markF >= pendingLimit.price;
+    if (!hit) return;
+    limitFired.current = true;
+    const order = pendingLimit;
+    const at = markF.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    // Defer out of the effect body to avoid a synchronous cascading render.
+    queueMicrotask(() => {
+      setNotice(`Limit ${order.isLong ? "long" : "short"} triggered at $${at} — opening…`);
+      cancelLimit();
+      openWith(order.isLong, order.margin, order.leverage);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markF, pendingLimit, hasPosition, busy]);
 
   // ----- near-liquidation browser notification (fires once per entry) -----
   const nearLiqNotified = useRef(false);
@@ -828,6 +897,25 @@ export function TradeApp() {
                 <h2 className="mb-5 text-base font-semibold uppercase tracking-wider text-ink-soft">
                   Open position
                 </h2>
+                {pendingLimit && (
+                  <div className="mb-4 rounded-lg border border-amber/50 bg-amber/5 p-3 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-amber">
+                        Limit {pendingLimit.isLong ? "long" : "short"} pending
+                      </span>
+                      <button
+                        onClick={cancelLimit}
+                        className="text-ink-dim hover:text-wine"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <p className="mt-1 text-ink-soft">
+                      Open ${pendingLimit.margin} × {pendingLimit.leverage}× when mark{" "}
+                      {pendingLimit.isLong ? "≤" : "≥"} {fmtPrice(pendingLimit.price)}
+                    </p>
+                  </div>
+                )}
                 <div className="mb-4 grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setSide("long")}
@@ -924,6 +1012,39 @@ export function TradeApp() {
                     ? "Opening…"
                     : `Open ${side === "long" ? "Long" : "Short"}`}
                 </button>
+
+                {/* Limit order (client-side) */}
+                <div className="mt-4 rounded-lg border border-line-soft bg-bg/40 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                      Limit order
+                    </p>
+                    <span className="text-[10px] text-ink-dim">auto-open · beta</span>
+                  </div>
+                  <input
+                    value={limitPrice}
+                    onChange={(e) => setLimitPrice(e.target.value)}
+                    inputMode="decimal"
+                    placeholder={`Trigger price (${market.symbol}/USD)`}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-amber"
+                  />
+                  <button
+                    onClick={placeLimit}
+                    disabled={
+                      !!busy ||
+                      wrongNetwork ||
+                      !(Number(limitPrice) > 0) ||
+                      Number(margin) <= 0
+                    }
+                    className="mt-2 w-full rounded-lg border border-amber px-4 py-2.5 text-sm font-semibold text-amber disabled:opacity-40"
+                  >
+                    {`Place limit ${side === "long" ? "long" : "short"}`}
+                  </button>
+                  <p className="mt-2 text-[10px] leading-relaxed text-ink-dim">
+                    Opens a {side} when mark {side === "long" ? "≤" : "≥"} your trigger.
+                    Runs in your browser — keep the tab open.
+                  </p>
+                </div>
               </>
             )}
           </div>
