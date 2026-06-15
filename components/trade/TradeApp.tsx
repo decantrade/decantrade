@@ -26,6 +26,7 @@ import { PriceChart } from "./PriceChart";
 import { History } from "./History";
 import { PnlCard, type PnlCardData } from "./PnlCard";
 import { FundingPanel } from "./FundingPanel";
+import { KeeperStatus } from "./KeeperStatus";
 
 // Client-only so the WalletConnect SDK stays out of the server worker bundle.
 const WalletConnectOption = dynamic(() => import("./WalletConnectOption"), {
@@ -550,6 +551,9 @@ export function TradeApp() {
             ── Mainnet beta
           </p>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Trade</h1>
+          <div className="mt-2">
+            <KeeperStatus />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link
