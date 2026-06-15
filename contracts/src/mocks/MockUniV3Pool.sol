@@ -7,6 +7,8 @@ contract MockUniV3Pool {
     address public token0;
     address public token1;
     int24 public tick;
+    uint24 public fee = 3000; // 0.3% — overridable for getPool() matching
+    uint128 public liquidity = type(uint128).max; // deep by default; lower to test floor
 
     constructor(address _token0, address _token1, int24 _tick) {
         // Real pools always have token0 < token1; keep the invariant.
@@ -18,6 +20,14 @@ contract MockUniV3Pool {
 
     function setTick(int24 _tick) external {
         tick = _tick;
+    }
+
+    function setFee(uint24 _fee) external {
+        fee = _fee;
+    }
+
+    function setLiquidity(uint128 _liquidity) external {
+        liquidity = _liquidity;
     }
 
     function observe(uint32[] calldata secondsAgos)
