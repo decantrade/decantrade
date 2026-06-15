@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ADDRESSES, MARKETS } from "@/lib/decant";
+import { NETWORKS } from "@/lib/decant";
 
 export const metadata: Metadata = {
   title: "Docs · Decant",
   description:
-    "How Decant works: vAMM pricing, oracles, leverage & margin, funding, liquidation, the insurance fund, the permissionless market factory, and the Base Sepolia contract addresses.",
+    "How Decant works: vAMM pricing, oracles, leverage & margin, funding, liquidation, the insurance fund, the permissionless market factory, and the Base mainnet contract addresses.",
   alternates: { canonical: "/docs" },
 };
 
-const SCAN = "https://sepolia.basescan.org/address";
+const SCAN = "https://basescan.org/address";
+const MAINNET = NETWORKS.mainnet;
+const MARKETS = MAINNET.markets;
+const USDC = MAINNET.addresses.usdc;
 
 function Addr({ label, address }: { label: string; address: string }) {
   return (
@@ -38,11 +41,12 @@ export default function DocsPage() {
             Anyone can launch a leveraged market for any token, and anyone can
             trade it — fully on-chain, with no order book and no listing
             gatekeeper. This page explains how the protocol works and how to use
-            the testnet app at <Link href="/trade">/trade</Link>.
+            the app at <Link href="/trade">/trade</Link>.
           </p>
           <p>
-            <strong>Status:</strong> live on <strong>Base Sepolia</strong>{" "}
-            (testnet). Tokens have no monetary value and the contracts are{" "}
+            <strong>Status:</strong> live on <strong>Base mainnet</strong>{" "}
+            as a guarded beta — real USDC, gated to $DECANT holders / allowlist,
+            with deposit and leverage caps. The contracts are{" "}
             <strong>not audited</strong>. See the{" "}
             <Link href="/risk">risk disclaimer</Link>.
           </p>
@@ -91,8 +95,8 @@ export default function DocsPage() {
             Collateral is deposited per market and positions use{" "}
             <strong>isolated margin</strong> — risk in one market never touches
             another. Notional exposure is{" "}
-            <code>margin × leverage</code>. The current testnet markets allow up
-            to <strong>50×</strong> leverage (configurable per market).
+            <code>margin × leverage</code>. The current guarded-beta markets cap
+            leverage at <strong>10×</strong> (configurable per market).
           </p>
           <p>
             Opening a position charges a trading fee on the notional. Because
@@ -143,17 +147,17 @@ export default function DocsPage() {
             rules after launch.
           </p>
 
-          <h2>7. Using the testnet app</h2>
+          <h2>7. Using the app</h2>
           <ol>
             <li>
               Open <Link href="/trade">/trade</Link> and connect a wallet on{" "}
-              <strong>Base Sepolia</strong> (the app prompts you to switch
+              <strong>Base mainnet</strong> (the app prompts you to switch
               networks if needed).
             </li>
             <li>
-              Click <strong>Faucet</strong> to mint test USDC (tUSDC), then{" "}
-              <strong>Approve</strong> and <strong>Deposit</strong> collateral
-              into a market.
+              <strong>Approve</strong> and <strong>Deposit</strong> USDC
+              collateral into a market (real USDC; deposits are capped per
+              wallet during the beta).
             </li>
             <li>
               Pick <strong>Long</strong> or <strong>Short</strong>, set your
@@ -165,32 +169,25 @@ export default function DocsPage() {
             </li>
           </ol>
           <p>
-            Need testnet ETH for gas? Use a Base Sepolia faucet such as the{" "}
-            <a
-              href="https://portal.cdp.coinbase.com/products/faucet"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Coinbase faucet
-            </a>
-            .
+            You&apos;ll need a little ETH on Base for gas and real USDC on Base
+            for collateral.
           </p>
 
-          <h2>8. Contracts (Base Sepolia)</h2>
+          <h2>8. Contracts (Base mainnet)</h2>
           <p>All state is on-chain and verifiable on BaseScan:</p>
           <div className="my-3 rounded-xl border border-line bg-panel p-4 text-[13px]">
-            <Addr label="Market factory" address={ADDRESSES.factory} />
-            <Addr label="Test USDC (tUSDC)" address={ADDRESSES.usdc} />
+            <Addr label="USDC" address={USDC} />
             {Object.values(MARKETS).map((m) => (
-              <Addr key={m.address} label={`${m.label} market`} address={m.address} />
+              <Addr key={m!.address} label={`${m!.label} market`} address={m!.address} />
             ))}
           </div>
 
           <h2>9. FAQ</h2>
           <h3>Is this real money?</h3>
           <p>
-            No. Decant currently runs on Base Sepolia testnet. tUSDC and all
-            positions have no monetary value.
+            Yes. Decant runs on Base mainnet with real USDC. It is a guarded
+            beta — gated, capped and unaudited — so only trade what you can
+            afford to lose.
           </p>
           <h3>Do I need anyone&apos;s permission to launch a market?</h3>
           <p>

@@ -28,8 +28,8 @@ export function NetworkStatus() {
     },
     {
       label: "Stage",
-      value: "testnet",
-      sub: "audit pending · mainnet soon",
+      value: "mainnet beta",
+      sub: "audit pending · guarded",
       accent: "text-amber",
     },
     {

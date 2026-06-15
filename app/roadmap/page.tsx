@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 export const metadata: Metadata = {
   title: "Roadmap · Decant",
   description:
-    "Where Decant is today and where it's going: a live testnet on Base Sepolia, product polish, pre-mainnet hardening and audit, and the path to Base mainnet.",
+    "Where Decant is today and where it's going: a guarded beta on Base mainnet, product polish, hardening and audit, and the path to a full public launch.",
   alternates: { canonical: "/roadmap" },
 };
 
@@ -67,14 +67,15 @@ export default function RoadmapPage() {
           <p className="mt-5 text-ink-soft">
             Permissionless perpetual futures on Base — anyone can launch a
             leveraged market for any Base token in ~60 seconds, no gatekeeper.
-            Decant is <strong>live on testnet</strong> (Base Sepolia) today; the
-            path below leads to a hardened, audited mainnet.
+            Decant is <strong>live on Base mainnet</strong> (guarded beta)
+            today — gated and capped while the path below leads to a hardened,
+            audited public launch.
           </p>
 
           <Phase
             status="done"
-            title="Phase 0 — Live on testnet"
-            blurb="The full product works end-to-end on Base Sepolia."
+            title="Phase 0 — Live (guarded beta)"
+            blurb="The full product works end-to-end on Base mainnet."
             items={[
               {
                 head: "Landing + waitlist",
@@ -89,7 +90,7 @@ export default function RoadmapPage() {
                 body: "Launch a new perp market for any Base token via Pyth feed or Uniswap V3 TWAP.",
               },
               {
-                head: "Smart contracts (Base Sepolia)",
+                head: "Smart contracts (Base)",
                 body: "vAMM PerpMarket + MarketFactory, Pyth oracle with Uniswap V3 TWAP fallback, isolated margin & per-market insurance fund.",
               },
               {
@@ -122,7 +123,7 @@ export default function RoadmapPage() {
           <Phase
             status="next"
             title="Phase 1 — Polish & traction"
-            blurb="Make the testnet feel like a real product and bring in early traders. Low-risk, no mainnet funds at stake."
+            blurb="Make the beta feel like a real product and bring in early traders. Caps stay small while the protocol hardens."
             items={[
               {
                 head: "Trading UX",
@@ -195,8 +196,8 @@ export default function RoadmapPage() {
               per-market insurance fund and auto-deleveraging.
             </li>
             <li>
-              <strong>Regulation</strong> — testnet-only with disclaimers for
-              now; legal review before mainnet.
+              <strong>Regulation</strong> — guarded beta with disclaimers and
+              caps for now; legal review before a wider launch.
             </li>
           </ul>
 

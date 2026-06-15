@@ -18,12 +18,13 @@ export default function RiskPage() {
         before participating.
       </p>
 
-      <h2>1. Pre-launch &amp; testnet</h2>
+      <h2>1. Guarded beta</h2>
       <p>
-        The product is in development. Where any protocol functionality is
-        available, it runs on a <strong>test network</strong> using tokens that
-        have <strong>no monetary value</strong>. Features, parameters, and
-        availability may change or be removed at any time.
+        Decant runs on <strong>Base mainnet</strong> as a{" "}
+        <strong>guarded beta</strong> using <strong>real funds</strong>. Access
+        is gated and positions are capped while the protocol is hardened, and
+        the contracts are <strong>not audited</strong>. Features, parameters,
+        and availability may change or be removed at any time.
       </p>
 
       <h2>2. Perpetual futures are high-risk</h2>
