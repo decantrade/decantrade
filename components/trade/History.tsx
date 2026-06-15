@@ -117,8 +117,22 @@ export function History() {
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-6 text-center text-sm text-ink-dim">{children}</p>;
+function Empty({
+  title,
+  children,
+  action,
+}: {
+  title?: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 py-8 text-center">
+      {title && <p className="text-sm font-medium text-ink-soft">{title}</p>}
+      <p className="max-w-xs text-xs leading-relaxed text-ink-dim">{children}</p>
+      {action}
+    </div>
+  );
 }
 
 function Activity({ address, isConnected }: { address?: string; isConnected: boolean }) {
@@ -149,11 +163,20 @@ function Activity({ address, isConnected }: { address?: string; isConnected: boo
     };
   }, [isConnected, address, network.keeperApi]);
 
-  if (!isConnected) return <Empty>Connect a wallet to see your trade history.</Empty>;
+  if (!isConnected)
+    return (
+      <Empty title="No trade history yet">
+        Connect your wallet to see your fills, funding payments and realized PnL here.
+      </Empty>
+    );
   if (err) return <Empty>{err}</Empty>;
   if (rows === null) return <Empty>Loading…</Empty>;
   if (rows.length === 0)
-    return <Empty>No activity yet — deposit and open a position to get started.</Empty>;
+    return (
+      <Empty title="No activity yet">
+        Deposit USDC and open a long or short — your fills and funding will show up here.
+      </Empty>
+    );
 
   return (
     <div className="overflow-x-auto">
@@ -265,7 +288,12 @@ function Positions({ address, isConnected }: { address?: string; isConnected: bo
     query: { enabled: !!address && isConnected, refetchInterval: 10_000 },
   });
 
-  if (!isConnected) return <Empty>Connect a wallet to see your open positions.</Empty>;
+  if (!isConnected)
+    return (
+      <Empty title="No open positions">
+        Connect a wallet to view your open positions across ETH, BTC &amp; SOL.
+      </Empty>
+    );
   if (isLoading || !data) return <Empty>Loading…</Empty>;
 
   const open = keys
@@ -279,7 +307,11 @@ function Positions({ address, isConnected }: { address?: string; isConnected: bo
     .filter((x) => x.pos && x.pos[0] !== 0n);
 
   if (open.length === 0)
-    return <Empty>No open positions across markets.</Empty>;
+    return (
+      <Empty title="No open positions">
+        When you open a long or short it&apos;ll appear here, across every market.
+      </Empty>
+    );
 
   return (
     <div className="overflow-x-auto">
@@ -403,7 +435,9 @@ function LeaderTable({
       ) : rows === null ? (
         <Empty>Loading…</Empty>
       ) : rows.length === 0 ? (
-        <Empty>No trades indexed yet — be the first on the board.</Empty>
+        <Empty title="Leaderboard is empty">
+          No trades indexed yet — open a position and be the first on the board.
+        </Empty>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-left text-sm">

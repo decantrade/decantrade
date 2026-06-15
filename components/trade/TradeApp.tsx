@@ -655,8 +655,26 @@ export function TradeApp() {
       )}
 
       {!isConnected ? (
-        <div className="rounded-xl border border-line bg-panel p-8 text-center text-ink-soft">
-          Connect a wallet to start trading on Base mainnet.
+        <div className="rounded-xl border border-line bg-panel p-8 text-center">
+          <h2 className="text-lg font-semibold tracking-tight">Connect a wallet to trade</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
+            Trading runs on Base mainnet with real USDC. Use the{" "}
+            <span className="text-amber">Connect wallet</span>{" "}
+            button above to get started — you&apos;ll need to be allowlisted or hold $DECANT
+            during the guarded beta.
+          </p>
+          <div className="mx-auto mt-5 grid max-w-md grid-cols-1 gap-2 text-left sm:grid-cols-3">
+            {[
+              ["1 · Connect", "Connect on Base mainnet."],
+              ["2 · Deposit", "Add USDC collateral (max $200)."],
+              ["3 · Trade", "Open ETH, BTC or SOL up to 10×."],
+            ].map(([t, d]) => (
+              <div key={t} className="rounded-lg border border-line bg-bg px-3 py-2.5">
+                <p className="text-xs font-semibold text-ink">{t}</p>
+                <p className="mt-0.5 text-[11px] text-ink-dim">{d}</p>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-5">
