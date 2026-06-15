@@ -600,8 +600,8 @@ export function TradeApp() {
           <p className="text-[11px] uppercase tracking-[0.22em] text-amber">
             ── Mainnet beta
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Trade</h1>
-          <div className="mt-2">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Trade</h1>
             <KeeperStatus />
           </div>
         </div>
@@ -675,29 +675,10 @@ export function TradeApp() {
       {/* Price chart */}
       <PriceChart marketKey={activeMarketKey} />
 
-      {/* Funding countdown + recent funding history */}
-      <FundingPanel
-        marketKey={activeMarketKey}
-        fundingRate={fundingRate}
-        nextFundingTs={nextFundingTs}
-        intervalSec={fundingIntervalSec}
-      />
-
-      {/* Stats */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {/* Key market + account stats */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Mark price" value={`$${fmtUsd(markPrice as bigint)}`} accent="text-ink" />
         <Stat label="Index (oracle)" value={`$${fmtUsd(indexPrice as bigint)}`} accent="text-ink-soft" />
-        <Stat
-          label="Funding / 1h"
-          value={fmtPct(fundingRate)}
-          accent={
-            fundingRate === undefined
-              ? "text-ink-soft"
-              : fundingRate >= 0
-                ? "text-green"
-                : "text-wine"
-          }
-        />
         <Stat label="Max leverage" value={`${maxLevNum}×`} accent="text-amber" />
         <Stat
           label="Free collateral"
@@ -705,6 +686,14 @@ export function TradeApp() {
           accent="text-green"
         />
       </div>
+
+      {/* Funding countdown + recent funding history */}
+      <FundingPanel
+        marketKey={activeMarketKey}
+        fundingRate={fundingRate}
+        nextFundingTs={nextFundingTs}
+        intervalSec={fundingIntervalSec}
+      />
 
       {error && (
         <div className="mb-4 rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 text-xs text-wine">
@@ -928,18 +917,43 @@ export function TradeApp() {
           <div className="rounded-xl border border-line bg-panel p-4 sm:p-5 md:col-span-3">
             {hasPosition ? (
               <>
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
-                    Your position
-                  </h2>
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-soft">
+                      Your position
+                    </h2>
+                    <span
+                      className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                        pos![0] > 0n
+                          ? "border-green/50 bg-green/10 text-green"
+                          : "border-wine/50 bg-wine/10 text-wine"
+                      }`}
+                    >
+                      {pos![0] > 0n ? "Long" : "Short"}
+                    </span>
+                  </div>
                   <button
                     onClick={enableNotifications}
-                    className="text-[11px] text-ink-dim hover:text-amber"
+                    className="shrink-0 text-[11px] text-ink-dim hover:text-amber"
                   >
                     🔔 Enable alerts
                   </button>
                 </div>
-                <PosRow label="Side" value={pos![0] > 0n ? "Long" : "Short"} />
+
+                {/* Unrealized PnL — the number that matters, up top */}
+                <div className="mb-4 rounded-lg border border-line-soft bg-bg/40 px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                    Unrealized PnL
+                  </p>
+                  <p
+                    className={`font-mono text-2xl ${
+                      (uPnl as bigint) >= 0n ? "text-green" : "text-wine"
+                    }`}
+                  >
+                    ${fmtSigned(uPnl as bigint)}
+                  </p>
+                </div>
+
                 <PosRow
                   label={`Size (${market.symbol})`}
                   value={fmtSigned(pos![0] < 0n ? -pos![0] : pos![0], 4)}
@@ -956,13 +970,6 @@ export function TradeApp() {
                   label="Funding (accrued)"
                   value={`$${fmtSigned(BigInt(Math.round(posFunding * 1e18)))}`}
                   valueClass={posFunding > 0 ? "text-wine" : "text-green"}
-                />
-                <PosRow
-                  label="Unrealized PnL"
-                  value={`$${fmtSigned(uPnl as bigint)}`}
-                  valueClass={
-                    (uPnl as bigint) >= 0n ? "text-green" : "text-wine"
-                  }
                 />
                 {/* Client-side TP / SL */}
                 <div className="mt-4 rounded-lg border border-line-soft bg-bg/40 p-3">
@@ -1076,7 +1083,7 @@ export function TradeApp() {
               </>
             ) : (
               <>
-                <h2 className="mb-5 text-base font-semibold uppercase tracking-wider text-ink-soft">
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-ink-soft">
                   Open position
                 </h2>
                 {pendingLimit && (
