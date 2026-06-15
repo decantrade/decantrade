@@ -1,5 +1,5 @@
 import { Reveal } from "./Reveal";
-import { HeroMockup } from "./HeroMockup";
+import { HeroDemo } from "./HeroDemo";
 
 const STATS = [
   { label: "Status", value: "mainnet beta" },
@@ -71,7 +71,7 @@ export function Hero() {
         </div>
 
         <Reveal delay={0.2} className="mt-2 sm:mt-6 lg:mt-0">
-          <HeroMockup />
+          <HeroDemo />
         </Reveal>
       </div>
     </section>
