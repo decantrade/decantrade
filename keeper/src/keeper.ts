@@ -1,5 +1,6 @@
 import type { DecantPublicClient, DecantWalletClient, DecantAccount } from "./clients.js";
 import { config, perpMarketAbi, type MarketCfg } from "./config.js";
+import { getMarkets } from "./markets.js";
 import { getOpenTraders } from "./db.js";
 
 const maintenanceCache = new Map<string, bigint>();
@@ -27,7 +28,7 @@ export async function liquidationSweep(
   account: DecantAccount | null,
 ): Promise<number> {
   let sent = 0;
-  for (const market of config.markets) {
+  for (const market of getMarkets()) {
     const traders = getOpenTraders(market.key);
     if (traders.length === 0) continue;
     const mmr = await maintenance(client, market);
@@ -80,7 +81,7 @@ export async function fundingSweep(
 ): Promise<number> {
   if (!wallet || !account) return 0;
   let sent = 0;
-  for (const market of config.markets) {
+  for (const market of getMarkets()) {
     try {
       const hash = await wallet.writeContract({
         account,

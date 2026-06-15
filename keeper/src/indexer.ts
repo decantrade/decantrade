@@ -2,6 +2,7 @@ import type { AbiEvent } from "viem";
 import type { DecantPublicClient } from "./clients.js";
 import { config, perpMarketAbi, type MarketCfg } from "./config.js";
 import { insertEvent, markClosed, markOpen, getCursor, setCursor } from "./db.js";
+import { getMarkets } from "./markets.js";
 
 const EVENT_ABIS = perpMarketAbi.filter((x) => x.type === "event") as AbiEvent[];
 
@@ -89,7 +90,7 @@ export async function syncMarket(client: DecantPublicClient, market: MarketCfg, 
 
 export async function syncAll(client: DecantPublicClient) {
   const latest = await client.getBlockNumber();
-  for (const market of config.markets) {
+  for (const market of getMarkets()) {
     await syncMarket(client, market, latest);
   }
 }

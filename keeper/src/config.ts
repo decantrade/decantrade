@@ -90,6 +90,7 @@ export const perpMarketAbi = [
     ],
   },
   // ---- keeper calls ----
+  { type: "function", name: "oracle", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "settleFunding", stateMutability: "nonpayable", inputs: [], outputs: [] },
   {
     type: "function",
@@ -100,7 +101,27 @@ export const perpMarketAbi = [
   },
 ] as const;
 
-export type MarketCfg = { key: string; address: `0x${string}` };
+export type MarketCfg = { key: string; address: `0x${string}`; source?: "static" | "factory" };
+
+// Just enough of MarketFactory to enumerate permissionlessly-launched markets.
+export const factoryAbi = [
+  { type: "function", name: "allMarketsLength", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  {
+    type: "function",
+    name: "allMarkets",
+    stateMutability: "view",
+    inputs: [{ name: "index", type: "uint256" }],
+    outputs: [{ type: "address" }],
+  },
+] as const;
+
+// oracle()/baseToken()/symbol() — used to derive a human key for a discovered market.
+export const oracleAbi = [
+  { type: "function", name: "baseToken", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+] as const;
+export const erc20SymbolAbi = [
+  { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
+] as const;
 
 function parseMarkets(): MarketCfg[] {
   // MARKETS env: "ETH:0xabc...,BTC:0xdef...". Falls back to the live Base Sepolia markets.
@@ -136,6 +157,10 @@ export const config = {
           rpcUrls: { default: { http: [rpcUrl] } },
         }),
   markets: parseMarkets(),
+  // Permissionless factory to auto-discover markets from. Empty string disables
+  // discovery (keeper then only manages the static MARKETS list above).
+  factoryAddress: (process.env.FACTORY_ADDRESS?.trim() || "") as `0x${string}` | "",
+  discoveryIntervalMs: Number(process.env.DISCOVERY_INTERVAL_MS || 60_000),
   startBlock: BigInt(process.env.START_BLOCK || "42326000"),
   dbPath: process.env.DB_PATH || "./decant-indexer.sqlite",
   apiPort: Number(process.env.API_PORT || 8787),
