@@ -143,7 +143,7 @@ export function PnlCard({ data, onClose }: { data: PnlCardData; onClose: () => v
 
   const shareText = `${data.roiPct >= 0 ? "+" : ""}${money(data.roiPct, 2)}% on my ${
     data.isLong ? "long" : "short"
-  } ${data.marketLabel} ${data.leverage}× on @_decantrade 🔵\n\npermissionless perps for any Base token. live on testnet:`;
+  } ${data.marketLabel} ${data.leverage}× on @_decantrade 🔵\n\npermissionless perps for any Base token. live on Base mainnet:`;
   const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     shareText,
   )}&url=${encodeURIComponent("https://decantrade.com/trade")}`;

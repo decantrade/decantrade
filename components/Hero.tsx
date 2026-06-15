@@ -2,7 +2,7 @@ import { Reveal } from "./Reveal";
 import { HeroMockup } from "./HeroMockup";
 
 const STATS = [
-  { label: "Status", value: "testnet" },
+  { label: "Status", value: "mainnet beta" },
   { label: "Leverage", value: "up to 50×" },
   { label: "Oracle", value: "Pyth + TWAP" },
   { label: "Chain", value: "Base · 8453" },
@@ -17,9 +17,9 @@ export function Hero() {
         <Reveal>
           <div className="mb-7 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ink-dim">
             <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green" />
-            <span className="text-green">live on testnet</span>
+            <span className="text-green">live on Base mainnet</span>
             <span className="text-line">/</span>
-            <span>audit before mainnet</span>
+            <span>guarded beta · unaudited</span>
           </div>
         </Reveal>
 

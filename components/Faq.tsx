@@ -7,7 +7,7 @@ const FAQS = [
   },
   {
     q: "Is it live with real money?",
-    a: "No. Decant is currently on Base testnet in lab mode. Public mainnet trading opens only after an external security audit. The waitlist is how you get early access.",
+    a: "Yes — Decant runs on Base mainnet as a guarded beta with real USDC. Access is gated ($DECANT holders / allowlist) and positions are capped while the protocol is hardened and still unaudited, so trade small. A full public launch follows an external security audit.",
   },
   {
     q: "Why is the waitlist invite-only?",

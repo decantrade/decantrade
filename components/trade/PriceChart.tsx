@@ -155,7 +155,7 @@ export function PriceChart({ marketKey }: { marketKey: MarketKey }) {
       </div>
       <p className="mt-2 text-right text-[10px] uppercase tracking-[0.18em] text-ink-dim">
         {marketKey === "SPCX"
-          ? "Pre-IPO · simulated price (testnet)"
+          ? "Pre-IPO · simulated price"
           : "Spot reference · Coinbase / Binance"}
       </p>
     </div>

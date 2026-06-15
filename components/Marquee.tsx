@@ -6,7 +6,7 @@ const ITEMS = [
   "insurance fund on every market",
   "coin-margined",
   "don't trust, verify",
-  "testnet — not real money",
+  "guarded beta — real funds, trade small",
 ];
 
 export function Marquee() {
