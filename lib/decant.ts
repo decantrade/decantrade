@@ -319,6 +319,29 @@ export const perpMarketAbi = [
     inputs: [{ name: "amount", type: "uint256" }],
     outputs: [],
   },
+  // Access gate (guarded beta): callers must be allowlisted or hold
+  // >= gateMinBalance of gateToken to deposit / open.
+  {
+    type: "function",
+    name: "allowlist",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "gateToken",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
+    name: "gateMinBalance",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
 ] as const;
 
 // MarketFactory — permissionless launcher (createPythMarket / createTwapMarket).
