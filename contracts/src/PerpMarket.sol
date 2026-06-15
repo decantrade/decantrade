@@ -5,11 +5,13 @@ import {IERC20} from "./interfaces/IERC20.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 
 /// @title PerpMarket
-/// @notice Minimal isolated-margin perpetual futures market on a virtual AMM (vAMM).
+/// @notice Minimal isolated-margin perpetual futures market on Base.
 ///         One market per deployment (e.g. ETH/USD). Collateral is a single ERC20
-///         (e.g. USDC). Mark price comes from the vAMM; the oracle provides the index
-///         price used for funding and liquidation. This is an MVP for Base testnet —
-///         NOT audited, NOT for mainnet funds.
+///         (e.g. USDC). PnL, position size and liquidation are priced off the
+///         oracle index price, so a trader's PnL tracks the real asset price
+///         (size * priceDelta). The vAMM reserves still track order flow and
+///         provide the mark price used to compute funding (mark vs index). The
+///         protocol is the counterparty to open positions. NOT audited.
 ///
 /// Units: prices, sizes, notionals and margins are all 1e18-scaled ("WAD") internally.
 /// Collateral token amounts use the token's own decimals at the contract boundary.
@@ -64,9 +66,10 @@ contract PerpMarket {
 
     struct Position {
         int256 size; // base token, signed (+long / -short), WAD
-        uint256 openNotional; // quote put in at open, WAD
+        uint256 openNotional; // notional at open (margin * leverage), WAD
         uint256 margin; // locked collateral, WAD
         int256 lastPremium; // cumulativePremiumFraction snapshot at open
+        uint256 entryPrice; // oracle index price at open, WAD
     }
 
     mapping(address => Position) public positions;
@@ -187,27 +190,35 @@ contract PerpMarket {
         freeCollateral[msg.sender] -= marginAmount;
         insuranceFund += fee;
 
+        // Size is priced off the oracle so that size * entryPrice == notional.
+        uint256 entryPrice = oracle.getPrice();
+        require(entryPrice > 0, "NO_PRICE");
+        uint256 sizeAbs = (notional * WAD) / entryPrice;
+        require(sizeAbs > 0, "DUST");
+
+        // Push the vAMM reserves by the traded size so the mark price reflects
+        // order flow (used by funding). PnL itself is oracle-priced.
         int256 size;
         if (isLong) {
-            uint256 newQuote = quoteReserve + notional;
-            uint256 newBase = k / newQuote;
-            size = int256(baseReserve - newBase);
-            baseReserve = newBase;
-            quoteReserve = newQuote;
+            require(sizeAbs < baseReserve, "SIZE_TOO_BIG");
+            size = int256(sizeAbs);
+            baseReserve -= sizeAbs;
+            quoteReserve = k / baseReserve;
         } else {
-            require(notional < quoteReserve, "NOTIONAL_TOO_BIG");
-            uint256 newQuote = quoteReserve - notional;
-            uint256 newBase = k / newQuote;
-            size = -int256(newBase - baseReserve);
-            baseReserve = newBase;
-            quoteReserve = newQuote;
+            size = -int256(sizeAbs);
+            baseReserve += sizeAbs;
+            quoteReserve = k / baseReserve;
         }
 
         positions[msg.sender] = Position({
-            size: size, openNotional: notional, margin: marginAmount - fee, lastPremium: cumulativePremiumFraction
+            size: size,
+            openNotional: notional,
+            margin: marginAmount - fee,
+            lastPremium: cumulativePremiumFraction,
+            entryPrice: entryPrice
         });
 
-        emit PositionOpened(msg.sender, isLong, marginAmount - fee, notional, size, getMarkPrice());
+        emit PositionOpened(msg.sender, isLong, marginAmount - fee, notional, size, entryPrice);
     }
 
     function closePosition() external nonReentrant {
@@ -233,7 +244,7 @@ contract PerpMarket {
         require(closeSize != 0, "DUST");
         uint256 closeOpenNotional = (pos.openNotional * fraction) / WAD;
 
-        (int256 pnl, uint256 closeNotional) = _simulateClose(closeSize, closeOpenNotional);
+        (int256 pnl, uint256 closeNotional) = _simulateClose(closeSize, pos.entryPrice);
         if (closeSize > 0) {
             uint256 newBase = baseReserve + uint256(closeSize);
             quoteReserve = k / newBase;
@@ -312,8 +323,8 @@ contract PerpMarket {
             _settleFunding();
         }
 
-        // Swap the position back into the vAMM and compute realized PnL.
-        (int256 pnl, uint256 closeNotional) = _simulateClose(pos.size, pos.openNotional);
+        // Realize oracle-priced PnL and push the size back into the vAMM reserves.
+        (int256 pnl, uint256 closeNotional) = _simulateClose(pos.size, pos.entryPrice);
         if (pos.size > 0) {
             uint256 newBase = baseReserve + uint256(pos.size);
             quoteReserve = k / newBase;
@@ -388,18 +399,18 @@ contract PerpMarket {
         return oracle.getPrice();
     }
 
-    /// @notice Unrealized PnL of a trader's position at current vAMM price (WAD, signed).
+    /// @notice Unrealized PnL of a trader's position at the current index price (WAD, signed).
     function unrealizedPnl(address trader) public view returns (int256 pnl) {
         Position memory pos = positions[trader];
         if (pos.size == 0) return 0;
-        (pnl,) = _simulateClose(pos.size, pos.openNotional);
+        (pnl,) = _simulateClose(pos.size, pos.entryPrice);
     }
 
     /// @notice Account value = margin + unrealized PnL - pending funding (WAD, signed).
     function accountValue(address trader) public view returns (int256) {
         Position memory pos = positions[trader];
         if (pos.size == 0) return 0;
-        (int256 pnl,) = _simulateClose(pos.size, pos.openNotional);
+        (int256 pnl,) = _simulateClose(pos.size, pos.entryPrice);
         int256 funding = (pos.size * (cumulativePremiumFraction - pos.lastPremium)) / int256(WAD);
         return int256(pos.margin) + pnl - funding;
     }
@@ -413,32 +424,20 @@ contract PerpMarket {
         Position memory pos = positions[trader];
         if (pos.size == 0) return type(int256).max;
         uint256 absSize = pos.size > 0 ? uint256(pos.size) : uint256(-pos.size);
-        uint256 notional = (absSize * getMarkPrice()) / WAD;
+        uint256 notional = (absSize * oracle.getPrice()) / WAD;
         if (notional == 0) return type(int256).max;
         return (accountValue(trader) * int256(WAD)) / int256(notional);
     }
 
-    /// @dev Simulate closing `size` (held against `openNotional`) at current reserves.
-    ///      Returns (realized pnl, close notional). Does not mutate state.
-    function _simulateClose(int256 size, uint256 openNotional)
-        internal
-        view
-        returns (int256 pnl, uint256 closeNotional)
-    {
-        if (size > 0) {
-            uint256 newBase = baseReserve + uint256(size);
-            uint256 newQuote = k / newBase;
-            uint256 quoteOut = quoteReserve - newQuote; // proceeds from selling base
-            closeNotional = quoteOut;
-            pnl = int256(quoteOut) - int256(openNotional);
-        } else {
-            uint256 absSize = uint256(-size);
-            uint256 newBase = baseReserve - absSize;
-            uint256 newQuote = k / newBase;
-            uint256 quoteIn = newQuote - quoteReserve; // cost to buy base back
-            closeNotional = quoteIn;
-            pnl = int256(openNotional) - int256(quoteIn);
-        }
+    /// @dev Oracle-priced PnL for closing `size` opened at `entryPrice`.
+    ///      pnl = size * (indexPrice - entryPrice); closeNotional = |size| * indexPrice.
+    ///      Signed `size` handles both directions (long profits when price rises,
+    ///      short profits when it falls). Does not mutate state.
+    function _simulateClose(int256 size, uint256 entryPrice) internal view returns (int256 pnl, uint256 closeNotional) {
+        uint256 px = oracle.getPrice();
+        uint256 absSize = size > 0 ? uint256(size) : uint256(-size);
+        closeNotional = (absSize * px) / WAD;
+        pnl = (size * (int256(px) - int256(entryPrice))) / int256(WAD);
     }
 
     // ============================================================

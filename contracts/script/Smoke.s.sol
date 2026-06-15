@@ -30,7 +30,7 @@ contract Smoke is Script {
         market.openPosition(true, 10_000e18, 5e18); // 5x long, 50k notional
         console2.log("mark price (after long):", market.getMarkPrice());
 
-        (int256 size, uint256 notional, uint256 margin,) = market.positions(me);
+        (int256 size, uint256 notional, uint256 margin,,) = market.positions(me);
         console2.log("position size (1e18):", size);
         console2.log("open notional:", notional);
         console2.log("margin:", margin);

@@ -76,7 +76,7 @@ contract PerpMarketTest is Test {
         vm.prank(alice);
         market.openPosition(true, 10_000e18, 5e18); // 50k notional long
 
-        (int256 size, uint256 openNotional, uint256 margin,) = market.positions(alice);
+        (int256 size, uint256 openNotional, uint256 margin,,) = market.positions(alice);
         assertGt(size, 0, "long size positive");
         assertEq(openNotional, 50_000e18, "notional");
         assertEq(margin, 10_000e18 - 50e18, "margin net of 0.1% fee");
@@ -91,7 +91,7 @@ contract PerpMarketTest is Test {
         vm.prank(alice);
         market.openPosition(false, 10_000e18, 5e18);
 
-        (int256 size,,,) = market.positions(alice);
+        (int256 size,,,,) = market.positions(alice);
         assertLt(size, 0, "short size negative");
         assertLt(market.getMarkPrice(), markBefore, "mark down after short");
     }
@@ -117,16 +117,14 @@ contract PerpMarketTest is Test {
 
     function test_LongProfitsWhenPriceRises() public {
         _deposit(alice, 100_000e6);
-        _deposit(bob, 2_000_000e6);
 
         vm.prank(alice);
-        market.openPosition(true, 10_000e18, 5e18); // alice long
+        market.openPosition(true, 10_000e18, 5e18); // alice long @ 3000
 
         assertApproxEqAbs(market.unrealizedPnl(alice), int256(0), 1e18, "pnl ~0 right after open");
 
-        // Bob pushes the mark price up with a large long.
-        vm.prank(bob);
-        market.openPosition(true, 200_000e18, 5e18);
+        // Oracle/index price rises 10% -> long profits (oracle-priced PnL).
+        oracle.setPrice(3300e18);
 
         assertGt(market.unrealizedPnl(alice), int256(0), "alice long in profit after price up");
 
@@ -138,16 +136,37 @@ contract PerpMarketTest is Test {
 
     function test_ShortProfitsWhenPriceFalls() public {
         _deposit(alice, 100_000e6);
-        _deposit(bob, 2_000_000e6);
 
         vm.prank(alice);
-        market.openPosition(false, 10_000e18, 5e18); // alice short
+        market.openPosition(false, 10_000e18, 5e18); // alice short @ 3000
 
-        // Bob pushes the mark price down with a large short.
-        vm.prank(bob);
-        market.openPosition(false, 200_000e18, 5e18);
+        // Oracle/index price falls 10% -> short profits.
+        oracle.setPrice(2700e18);
 
         assertGt(market.unrealizedPnl(alice), int256(0), "alice short in profit after price down");
+    }
+
+    /// @notice PnL must follow the oracle index even when the vAMM mark is flat
+    ///         (no other trades). This is the scenario that previously showed
+    ///         ~$0 PnL despite the real price moving.
+    function test_PnlTracksOracleNotMark() public {
+        _deposit(alice, 100_000e6);
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18); // long @ 3000
+
+        uint256 markBefore = market.getMarkPrice();
+
+        // Index rises 10% but nobody trades, so the vAMM mark is unchanged.
+        oracle.setPrice(3300e18);
+        assertEq(market.getMarkPrice(), markBefore, "mark unchanged without flow");
+
+        // PnL still reflects the index move: size * (3300 - 3000).
+        (int256 size,,,,) = market.positions(alice);
+        int256 expected = (size * int256(300e18)) / int256(WAD);
+        int256 pnl = market.unrealizedPnl(alice);
+        assertGt(pnl, int256(0), "profit despite a flat mark");
+        assertApproxEqAbs(pnl, expected, 1e15, "pnl == size * index delta");
     }
 
     function test_RoundTripWithNoMoveCostsOnlyFees() public {
@@ -174,13 +193,13 @@ contract PerpMarketTest is Test {
 
         vm.prank(alice);
         market.openPosition(true, 10_000e18, 5e18); // 50k notional, margin 9,950
-        (int256 size0,, uint256 margin0,) = market.positions(alice);
+        (int256 size0,, uint256 margin0,,) = market.positions(alice);
         uint256 freeAfterOpen = market.freeCollateral(alice);
 
         vm.prank(alice);
         market.closePartial(0.5e18);
 
-        (int256 size1, uint256 notional1, uint256 margin1,) = market.positions(alice);
+        (int256 size1, uint256 notional1, uint256 margin1,,) = market.positions(alice);
         assertApproxEqAbs(size1, size0 / 2, 2, "size halved");
         assertEq(notional1, 25_000e18, "notional halved");
         assertEq(margin1, margin0 / 2, "margin halved");
@@ -193,22 +212,21 @@ contract PerpMarketTest is Test {
 
     function test_PartialCloseRealizesProfit() public {
         _deposit(alice, 100_000e6);
-        _deposit(bob, 2_000_000e6);
 
         vm.prank(alice);
         market.openPosition(true, 10_000e18, 5e18);
 
-        vm.prank(bob);
-        market.openPosition(true, 200_000e18, 5e18); // push mark up
+        // Index rises -> position in profit.
+        oracle.setPrice(3300e18);
 
         uint256 freeBefore = market.freeCollateral(alice);
-        (int256 size0,,,) = market.positions(alice);
+        (int256 size0,,,,) = market.positions(alice);
 
         vm.prank(alice);
         market.closePartial(0.5e18);
 
         assertGt(market.freeCollateral(alice), freeBefore, "profit + margin realized on the closed half");
-        (int256 size1,,,) = market.positions(alice);
+        (int256 size1,,,,) = market.positions(alice);
         assertApproxEqAbs(size1, size0 / 2, 2, "half the position remains");
         assertGt(market.unrealizedPnl(alice), int256(0), "remaining half still in profit");
     }
@@ -220,7 +238,7 @@ contract PerpMarketTest is Test {
 
         vm.prank(alice);
         market.closePartial(1e18);
-        (int256 size,,,) = market.positions(alice);
+        (int256 size,,,,) = market.positions(alice);
         assertEq(size, int256(0), "full close clears position");
     }
 
@@ -247,14 +265,14 @@ contract PerpMarketTest is Test {
         vm.prank(alice);
         market.openPosition(true, 10_000e18, 5e18);
 
-        (,, uint256 margin0,) = market.positions(alice);
+        (,, uint256 margin0,,) = market.positions(alice);
         int256 ratio0 = market.marginRatio(alice);
         uint256 free0 = market.freeCollateral(alice);
 
         vm.prank(alice);
         market.addMargin(5_000e18);
 
-        (,, uint256 margin1,) = market.positions(alice);
+        (,, uint256 margin1,,) = market.positions(alice);
         assertEq(margin1, margin0 + 5_000e18, "margin increased");
         assertEq(market.freeCollateral(alice), free0 - 5_000e18, "free collateral debited");
         assertGt(market.marginRatio(alice), ratio0, "margin ratio improved");
@@ -265,13 +283,13 @@ contract PerpMarketTest is Test {
         vm.prank(alice);
         market.openPosition(true, 10_000e18, 2e18); // low leverage -> headroom to remove
 
-        (,, uint256 margin0,) = market.positions(alice);
+        (,, uint256 margin0,,) = market.positions(alice);
         uint256 free0 = market.freeCollateral(alice);
 
         vm.prank(alice);
         market.removeMargin(3_000e18);
 
-        (,, uint256 margin1,) = market.positions(alice);
+        (,, uint256 margin1,,) = market.positions(alice);
         assertEq(margin1, margin0 - 3_000e18, "margin reduced");
         assertEq(market.freeCollateral(alice), free0 + 3_000e18, "collateral returned to free");
     }
@@ -315,22 +333,19 @@ contract PerpMarketTest is Test {
         // Use a wider maintenance window for a cleanly-tuned liquidation scenario.
         market.setRiskParams(10e18, 0.0625e18, 0.0125e18, 0.001e18);
         _deposit(alice, 100_000e6);
-        _deposit(bob, 4_000_000e6);
 
         // Alice opens a 10x long -> thin margin buffer.
         vm.prank(alice);
-        market.openPosition(true, 20_000e18, 10e18); // 200k notional
+        market.openPosition(true, 20_000e18, 10e18); // 200k notional @ 3000
 
         // Not liquidatable yet.
         vm.prank(keeper);
         vm.expectRevert(bytes("NOT_LIQUIDATABLE"));
         market.liquidate(alice);
 
-        // Bob pushes the price down enough to put Alice's 10x long under
-        // maintenance margin, but not so far that she's in bad debt (so a
-        // liquidation reward remains for the keeper).
-        vm.prank(bob);
-        market.openPosition(false, 70_000e18, 2e18);
+        // Index drops enough to put Alice's 10x long under maintenance margin,
+        // but not so far that she's in bad debt (so a reward remains).
+        oracle.setPrice(2800e18);
 
         assertLt(market.marginRatio(alice), int256(market.maintenanceMarginRatio()), "under maintenance");
 
@@ -338,7 +353,7 @@ contract PerpMarketTest is Test {
         vm.prank(keeper);
         market.liquidate(alice);
 
-        (int256 size,,,) = market.positions(alice);
+        (int256 size,,,,) = market.positions(alice);
         assertEq(size, int256(0), "position cleared");
         assertGt(market.freeCollateral(keeper), keeperFreeBefore, "keeper earned a reward");
     }

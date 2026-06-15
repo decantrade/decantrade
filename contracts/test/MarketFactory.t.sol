@@ -51,7 +51,7 @@ contract MarketFactoryTest is Test {
         market.openPosition(true, 10_000e18, 5e18);
         vm.stopPrank();
 
-        (int256 size,, uint256 margin,) = market.positions(alice);
+        (int256 size,, uint256 margin,,) = market.positions(alice);
         assertGt(size, 0, "long size positive");
         assertEq(margin, 9_950e18, "margin = 10000 - 0.1% fee");
         assertGt(market.getMarkPrice(), 2000e18, "buying pushed mark up");
