@@ -173,8 +173,45 @@ export function TradeApp() {
     query: { enabled: !!address, refetchInterval: 15_000 },
   });
 
+  // ----- access gate (guarded beta): allowlisted OR holds >= gateMinBalance of gateToken -----
+  const { data: gateTokenAddr } = useReadContract(marketRead("gateToken"));
+  const { data: gateMin } = useReadContract(marketRead("gateMinBalance"));
+  const { data: isAllowlisted } = useReadContract({
+    ...marketRead("allowlist", address ? [address] : []),
+    query: { enabled: !!address && network.guarded, refetchInterval: 30_000 },
+  });
+  const gateToken = gateTokenAddr as `0x${string}` | undefined;
+  const gateActive =
+    network.guarded &&
+    !!gateToken &&
+    gateToken !== "0x0000000000000000000000000000000000000000";
+  const { data: gateBal } = useReadContract({
+    address: gateToken,
+    abi: erc20Abi as Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : [],
+    chainId: network.chainId,
+    query: { enabled: !!address && gateActive, refetchInterval: 30_000 },
+  });
+
   const pos = position as readonly [bigint, bigint, bigint, bigint] | undefined;
   const hasPosition = !!pos && pos[0] !== 0n;
+
+  // Access gate evaluation. Only blocks when the gate is active and we have a
+  // definitive negative answer (avoids flashing the gate while reads load or
+  // for a wallet that already holds a position).
+  const gateHolds =
+    gateBal !== undefined && gateMin !== undefined && (gateBal as bigint) >= (gateMin as bigint);
+  const hasAccess = !gateActive || isAllowlisted === true || gateHolds || hasPosition;
+  const accessKnown =
+    !gateActive ||
+    (isAllowlisted !== undefined && gateBal !== undefined && gateMin !== undefined);
+  const gateLocked = gateActive && accessKnown && !hasAccess;
+  const gateMinTokens =
+    gateMin !== undefined ? Number(formatUnits(gateMin as bigint, 18)) : undefined;
+  const gateBalTokens =
+    gateBal !== undefined ? Number(formatUnits(gateBal as bigint, 18)) : undefined;
+
   const maxLevNum = maxLev ? Number((maxLev as bigint) / WAD) : 10;
   const levPresets = Array.from(
     new Set([1, 2, 5, 10, 25, maxLevNum].filter((v) => v >= 1 && v <= maxLevNum)),
@@ -657,6 +694,68 @@ export function TradeApp() {
       {!isConnected ? (
         <div className="rounded-xl border border-line bg-panel p-8 text-center text-ink-soft">
           Connect a wallet to start trading on Base mainnet.
+        </div>
+      ) : gateLocked ? (
+        <div className="rounded-xl border border-amber/40 bg-panel p-8 text-center">
+          <p className="text-xs uppercase tracking-[0.22em] text-amber">Access required</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight">This is a gated beta</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-ink-soft">
+            Trading on Decant is invite-only during the guarded beta. Your wallet{" "}
+            <span className="font-mono text-ink">
+              {address ? `${address.slice(0, 6)}…${address.slice(-4)}` : ""}
+            </span>{" "}
+            isn&apos;t on the list yet.
+            Two ways in:
+          </p>
+          <div className="mx-auto mt-6 grid max-w-md gap-3 text-left">
+            <div className="rounded-lg border border-line bg-bg px-4 py-3">
+              <p className="text-sm font-semibold text-ink">
+                1 · Hold ${gateToken ? "DECANT" : "the gate token"}
+              </p>
+              <p className="mt-1 text-xs text-ink-soft">
+                Keep at least{" "}
+                <span className="font-mono text-amber">
+                  {gateMinTokens !== undefined ? gateMinTokens.toLocaleString() : "—"} $DECANT
+                </span>{" "}
+                in this wallet.
+                {gateBalTokens !== undefined && (
+                  <>
+                    {" "}
+                    You currently hold{" "}
+                    <span className="font-mono text-ink">
+                      {gateBalTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
+                    .
+                  </>
+                )}
+              </p>
+              {gateToken && (
+                <a
+                  href={`${network.explorer}/token/${gateToken}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-block text-xs text-amber hover:underline"
+                >
+                  View $DECANT on explorer ↗
+                </a>
+              )}
+            </div>
+            <div className="rounded-lg border border-line bg-bg px-4 py-3">
+              <p className="text-sm font-semibold text-ink">2 · Get allowlisted</p>
+              <p className="mt-1 text-xs text-ink-soft">
+                Request an invite — allowlisted wallets can trade without holding $DECANT.
+              </p>
+              <Link
+                href="/#waitlist"
+                className="mt-2 inline-block rounded-lg bg-amber px-3 py-1.5 text-xs font-semibold text-bg"
+              >
+                Request access
+              </Link>
+            </div>
+          </div>
+          <p className="mx-auto mt-6 max-w-md text-[11px] text-ink-dim">
+            Access refreshes automatically once you hold enough $DECANT or your wallet is added.
+          </p>
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-5">
