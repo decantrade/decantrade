@@ -122,6 +122,10 @@ export function TradeApp() {
   // Client-side limit order (auto-open while this tab is open). Keyed per market.
   const [limitPrice, setLimitPrice] = useState("");
   const [pendingLimit, setPendingLimit] = useState<LimitOrder | null>(null);
+  // Whether this browser tab is currently visible. Client-side triggers
+  // (TP/SL/limit) only fire while the tab is open + foregrounded, so we surface
+  // this so users know their order is actively being watched.
+  const [tabHidden, setTabHidden] = useState(false);
 
   // ----- reads -----
   const marketRead = (name: string, args: unknown[] = []) =>
@@ -516,6 +520,15 @@ export function TradeApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markF, pendingLimit, hasPosition, busy]);
 
+  // ----- tab visibility (client-side triggers only run while foregrounded) -----
+  useEffect(() => {
+    const onVis = () => setTabHidden(document.visibilityState === "hidden");
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  const hasClientOrder = !!pendingLimit || tpPrice.trim() !== "" || slPrice.trim() !== "";
+
   // ----- near-liquidation browser notification (fires once per entry) -----
   const nearLiqNotified = useRef(false);
   useEffect(() => {
@@ -672,6 +685,30 @@ export function TradeApp() {
           ⚠ Your {market.label} position is within{" "}
           {((liqDistance ?? 0) * 100).toFixed(1)}% of its estimated liquidation price. Add margin
           or close to avoid liquidation.
+        </div>
+      )}
+
+      {hasClientOrder && (
+        <div
+          className={`mb-4 flex items-start gap-3 rounded-lg border px-4 py-3 text-xs ${
+            tabHidden
+              ? "border-wine/60 bg-wine/15 text-wine"
+              : "border-amber/50 bg-amber/5 text-ink-soft"
+          }`}
+        >
+          <span
+            className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
+              tabHidden ? "bg-wine" : "bg-green animate-pulse"
+            }`}
+          />
+          <div>
+            <span className="font-semibold text-ink">
+              {tabHidden ? "Order monitoring paused" : "Watching your order in this tab"}
+            </span>{" "}
+            {tabHidden
+              ? "This tab is in the background — TP/SL & limit orders will NOT trigger until you return to it."
+              : "TP/SL & limit orders are client-side: they only execute while this tab is open and visible. Don't close or background it, and never rely on them as guaranteed stops."}
+          </div>
         </div>
       )}
 
@@ -855,8 +892,11 @@ export function TradeApp() {
                     </div>
                   </div>
                   <p className="mt-2 text-[10px] leading-relaxed text-ink-dim">
-                    Triggers run in your browser and auto-close while this tab is open. Not an
-                    on-chain order — keep the tab open.
+                    <span className="text-amber">⚠ Client-side only.</span> Triggers run in this
+                    browser tab and auto-close while it stays open &amp; visible. They are{" "}
+                    <span className="text-ink-soft">not on-chain orders</span> — if you close or
+                    background the tab, they will not fire. Don&apos;t rely on them as guaranteed
+                    stops.
                   </p>
                 </div>
 
@@ -1080,8 +1120,9 @@ export function TradeApp() {
                     {`Place limit ${side === "long" ? "long" : "short"}`}
                   </button>
                   <p className="mt-2 text-[10px] leading-relaxed text-ink-dim">
-                    Opens a {side} when mark {side === "long" ? "≤" : "≥"} your trigger.
-                    Runs in your browser — keep the tab open.
+                    Opens a {side} when mark {side === "long" ? "≤" : "≥"} your trigger.{" "}
+                    <span className="text-amber">⚠ Client-side only</span> — runs in this browser
+                    tab and only fires while it stays open &amp; visible. Not an on-chain order.
                   </p>
                 </div>
               </>
