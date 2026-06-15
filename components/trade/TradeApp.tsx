@@ -543,7 +543,7 @@ export function TradeApp() {
 
   // ----- render -----
   return (
-    <div className="mx-auto max-w-5xl px-5 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-5 sm:py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-amber">
@@ -581,12 +581,12 @@ export function TradeApp() {
       )}
 
       {/* Market tabs */}
-      <div className="mb-6 flex gap-2">
+      <div className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-1">
         {(Object.keys(MARKETS) as MarketKey[]).map((k) => (
           <button
             key={k}
             onClick={() => setMarketKey(k)}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+            className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-medium transition ${
               k === activeMarketKey
                 ? "border-amber bg-amber/10 text-amber"
                 : "border-line text-ink-soft hover:border-ink-dim"
@@ -661,7 +661,7 @@ export function TradeApp() {
       ) : (
         <div className="grid gap-5 md:grid-cols-5">
           {/* Collateral */}
-          <div className="rounded-xl border border-line bg-panel p-5 md:col-span-2">
+          <div className="rounded-xl border border-line bg-panel p-4 sm:p-5 md:col-span-2">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-ink-soft">
               Collateral
             </h2>
@@ -746,7 +746,7 @@ export function TradeApp() {
           </div>
 
           {/* Trade / Position */}
-          <div className="rounded-xl border border-line bg-panel p-5 md:col-span-3">
+          <div className="rounded-xl border border-line bg-panel p-4 sm:p-5 md:col-span-3">
             {hasPosition ? (
               <>
                 <div className="mb-4 flex items-center justify-between">

@@ -81,29 +81,31 @@ export function History() {
 
   return (
     <section className="mt-8">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="mr-2 text-sm font-semibold uppercase tracking-wider text-ink-soft">
+      <div className="mb-4">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-ink-soft">
           History
         </h2>
-        {(
-          [
-            ["activity", "Your activity"],
-            ["positions", "Positions"],
-            ["leaderboard", "Leaderboard"],
-          ] as [Tab, string][]
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-              tab === id
-                ? "border-amber bg-amber/10 text-amber"
-                : "border-line text-ink-soft hover:border-ink-dim"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {(
+            [
+              ["activity", "Your activity"],
+              ["positions", "Positions"],
+              ["leaderboard", "Leaderboard"],
+            ] as [Tab, string][]
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                tab === id
+                  ? "border-amber bg-amber/10 text-amber"
+                  : "border-line text-ink-soft hover:border-ink-dim"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-xl border border-line bg-panel p-5">
