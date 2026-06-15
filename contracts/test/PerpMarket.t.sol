@@ -166,6 +166,128 @@ contract PerpMarketTest is Test {
     }
 
     // ---------------------------------------------------------
+    // Partial close
+    // ---------------------------------------------------------
+
+    function test_PartialCloseHalvesPosition() public {
+        _deposit(alice, 100_000e6);
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18); // 50k notional, margin 9,950
+        (int256 size0,, uint256 margin0,) = market.positions(alice);
+        uint256 freeAfterOpen = market.freeCollateral(alice);
+
+        vm.prank(alice);
+        market.closePartial(0.5e18);
+
+        (int256 size1, uint256 notional1, uint256 margin1,) = market.positions(alice);
+        assertApproxEqAbs(size1, size0 / 2, 2, "size halved");
+        assertEq(notional1, 25_000e18, "notional halved");
+        assertEq(margin1, margin0 / 2, "margin halved");
+        // About half the margin is released. The amount isn't exactly half:
+        // closing the first slice realizes a small vAMM convexity profit and
+        // pays a close fee, so allow a wider band around margin0 / 2.
+        uint256 released = market.freeCollateral(alice) - freeAfterOpen;
+        assertApproxEqAbs(released, margin0 / 2, 400e18, "about half margin released");
+    }
+
+    function test_PartialCloseRealizesProfit() public {
+        _deposit(alice, 100_000e6);
+        _deposit(bob, 2_000_000e6);
+
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18);
+
+        vm.prank(bob);
+        market.openPosition(true, 200_000e18, 5e18); // push mark up
+
+        uint256 freeBefore = market.freeCollateral(alice);
+        (int256 size0,,,) = market.positions(alice);
+
+        vm.prank(alice);
+        market.closePartial(0.5e18);
+
+        assertGt(market.freeCollateral(alice), freeBefore, "profit + margin realized on the closed half");
+        (int256 size1,,,) = market.positions(alice);
+        assertApproxEqAbs(size1, size0 / 2, 2, "half the position remains");
+        assertGt(market.unrealizedPnl(alice), int256(0), "remaining half still in profit");
+    }
+
+    function test_PartialCloseFullRoutesToClose() public {
+        _deposit(alice, 100_000e6);
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18);
+
+        vm.prank(alice);
+        market.closePartial(1e18);
+        (int256 size,,,) = market.positions(alice);
+        assertEq(size, int256(0), "full close clears position");
+    }
+
+    function test_PartialCloseRevertsBadFraction() public {
+        _deposit(alice, 100_000e6);
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18);
+
+        vm.prank(alice);
+        vm.expectRevert(bytes("BAD_FRACTION"));
+        market.closePartial(0);
+
+        vm.prank(alice);
+        vm.expectRevert(bytes("BAD_FRACTION"));
+        market.closePartial(1e18 + 1);
+    }
+
+    // ---------------------------------------------------------
+    // Adjust margin
+    // ---------------------------------------------------------
+
+    function test_AddMarginRaisesMarginAndLowersRisk() public {
+        _deposit(alice, 100_000e6);
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 5e18);
+
+        (,, uint256 margin0,) = market.positions(alice);
+        int256 ratio0 = market.marginRatio(alice);
+        uint256 free0 = market.freeCollateral(alice);
+
+        vm.prank(alice);
+        market.addMargin(5_000e18);
+
+        (,, uint256 margin1,) = market.positions(alice);
+        assertEq(margin1, margin0 + 5_000e18, "margin increased");
+        assertEq(market.freeCollateral(alice), free0 - 5_000e18, "free collateral debited");
+        assertGt(market.marginRatio(alice), ratio0, "margin ratio improved");
+    }
+
+    function test_RemoveMarginReturnsCollateral() public {
+        _deposit(alice, 100_000e6);
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 2e18); // low leverage -> headroom to remove
+
+        (,, uint256 margin0,) = market.positions(alice);
+        uint256 free0 = market.freeCollateral(alice);
+
+        vm.prank(alice);
+        market.removeMargin(3_000e18);
+
+        (,, uint256 margin1,) = market.positions(alice);
+        assertEq(margin1, margin0 - 3_000e18, "margin reduced");
+        assertEq(market.freeCollateral(alice), free0 + 3_000e18, "collateral returned to free");
+    }
+
+    function test_RemoveMarginRevertsWhenExceedingMaxLeverage() public {
+        _deposit(alice, 100_000e6);
+        vm.prank(alice);
+        market.openPosition(true, 10_000e18, 2e18); // 20k notional
+
+        // Removing almost all margin would push 20k notional past 50x.
+        vm.prank(alice);
+        vm.expectRevert(bytes("EXCEEDS_MAX_LEVERAGE"));
+        market.removeMargin(9_700e18);
+    }
+
+    // ---------------------------------------------------------
     // Funding
     // ---------------------------------------------------------
 

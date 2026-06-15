@@ -297,6 +297,27 @@ export const perpMarketAbi = [
     inputs: [],
     outputs: [],
   },
+  {
+    type: "function",
+    name: "closePartial",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "fraction", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "addMargin",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "removeMargin",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: [],
+  },
 ] as const;
 
 // MarketFactory — permissionless launcher (createPythMarket / createTwapMarket).

@@ -116,6 +116,8 @@ contract PerpMarket {
     event GateSet(address gateToken, uint256 gateMinBalance);
     event AllowlistSet(address indexed account, bool allowed);
     event CapsSet(uint256 maxDepositPerWallet, uint256 maxOpenInterest);
+    event MarginAdjusted(address indexed trader, int256 marginDelta, uint256 newMargin);
+    event PartialClosed(address indexed trader, uint256 fraction, int256 pnl, int256 funding, uint256 markPrice);
 
     constructor(IERC20 _collateral, IOracle _oracle, uint256 _baseReserve, uint256 _quoteReserve) {
         require(_baseReserve > 0 && _quoteReserve > 0, "BAD_RESERVES");
@@ -210,6 +212,89 @@ contract PerpMarket {
 
     function closePosition() external nonReentrant {
         _close(msg.sender, false, msg.sender);
+    }
+
+    /// @notice Close a fraction of the caller's position (WAD; 1e18 = 100%).
+    ///         Realizes PnL, funding and fees pro-rata on the closed slice; the
+    ///         remaining position keeps the same margin ratio. A full close
+    ///         (fraction == WAD) is routed through the normal close path.
+    function closePartial(uint256 fraction) external nonReentrant {
+        require(fraction > 0 && fraction <= WAD, "BAD_FRACTION");
+        if (fraction == WAD) {
+            _close(msg.sender, false, msg.sender);
+            return;
+        }
+        Position memory pos = positions[msg.sender];
+        require(pos.size != 0, "NO_POSITION");
+
+        _settleFunding();
+
+        int256 closeSize = (pos.size * int256(fraction)) / int256(WAD);
+        require(closeSize != 0, "DUST");
+        uint256 closeOpenNotional = (pos.openNotional * fraction) / WAD;
+
+        (int256 pnl, uint256 closeNotional) = _simulateClose(closeSize, closeOpenNotional);
+        if (closeSize > 0) {
+            uint256 newBase = baseReserve + uint256(closeSize);
+            quoteReserve = k / newBase;
+            baseReserve = newBase;
+        } else {
+            uint256 newBase = baseReserve - uint256(-closeSize);
+            quoteReserve = k / newBase;
+            baseReserve = newBase;
+        }
+
+        totalOpenInterest = closeOpenNotional >= totalOpenInterest ? 0 : totalOpenInterest - closeOpenNotional;
+
+        int256 funding = (closeSize * (cumulativePremiumFraction - pos.lastPremium)) / int256(WAD);
+        uint256 fee = (closeNotional * tradingFeeRatio) / WAD;
+        insuranceFund += fee;
+
+        uint256 releasedMargin = (pos.margin * fraction) / WAD;
+        int256 net = int256(releasedMargin) + pnl - funding - int256(fee);
+
+        // Shrink the position pro-rata; lastPremium stays so the remaining slice
+        // keeps accruing funding from the original open.
+        positions[msg.sender].size = pos.size - closeSize;
+        positions[msg.sender].openNotional = pos.openNotional - closeOpenNotional;
+        positions[msg.sender].margin = pos.margin - releasedMargin;
+
+        if (net > 0) {
+            freeCollateral[msg.sender] += uint256(net);
+        } else if (net < 0) {
+            uint256 badDebt = uint256(-net);
+            insuranceFund -= badDebt > insuranceFund ? insuranceFund : badDebt;
+        }
+
+        emit PartialClosed(msg.sender, fraction, pnl, funding, getMarkPrice());
+    }
+
+    /// @notice Add free collateral to an open position (WAD), lowering its
+    ///         leverage and liquidation risk.
+    function addMargin(uint256 amount) external nonReentrant {
+        require(amount > 0, "ZERO");
+        Position storage pos = positions[msg.sender];
+        require(pos.size != 0, "NO_POSITION");
+        require(freeCollateral[msg.sender] >= amount, "INSUFFICIENT");
+        freeCollateral[msg.sender] -= amount;
+        pos.margin += amount;
+        emit MarginAdjusted(msg.sender, int256(amount), pos.margin);
+    }
+
+    /// @notice Remove collateral from an open position (WAD). Reverts if it would
+    ///         exceed max leverage or drop below the maintenance margin.
+    function removeMargin(uint256 amount) external nonReentrant {
+        require(amount > 0, "ZERO");
+        Position storage pos = positions[msg.sender];
+        require(pos.size != 0, "NO_POSITION");
+        require(pos.margin > amount, "INSUFFICIENT_MARGIN");
+        _settleFunding();
+        uint256 newMargin = pos.margin - amount;
+        require((pos.openNotional * WAD) / newMargin <= maxLeverage, "EXCEEDS_MAX_LEVERAGE");
+        pos.margin = newMargin;
+        require(_marginRatio(msg.sender) >= int256(maintenanceMarginRatio), "UNDER_MAINTENANCE");
+        freeCollateral[msg.sender] += amount;
+        emit MarginAdjusted(msg.sender, -int256(amount), newMargin);
     }
 
     /// @notice Liquidate an under-margined position. Caller earns a reward.

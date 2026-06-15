@@ -111,6 +111,26 @@ const perpMarketAbi = [
   },
   {
     type: "event",
+    name: "PartialClosed",
+    inputs: [
+      { name: "trader", type: "address", indexed: true },
+      { name: "fraction", type: "uint256", indexed: false },
+      { name: "pnl", type: "int256", indexed: false },
+      { name: "funding", type: "int256", indexed: false },
+      { name: "markPrice", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "MarginAdjusted",
+    inputs: [
+      { name: "trader", type: "address", indexed: true },
+      { name: "marginDelta", type: "int256", indexed: false },
+      { name: "newMargin", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
     name: "FundingSettled",
     inputs: [
       { name: "premiumFraction", type: "int256", indexed: false },
@@ -145,7 +165,15 @@ const perpMarketAbi = [
 
 // Events the indexer follows (excludes FundingSettled, which has no trader and
 // would flood the feed — funding is summarised elsewhere).
-const TRADER_EVENTS = ["Deposited", "Withdrawn", "PositionOpened", "PositionClosed", "Liquidated"];
+const TRADER_EVENTS = [
+  "Deposited",
+  "Withdrawn",
+  "PositionOpened",
+  "PositionClosed",
+  "PartialClosed",
+  "MarginAdjusted",
+  "Liquidated",
+];
 const keeperEvents = perpMarketAbi.filter(
   (x) => x.type === "event" && TRADER_EVENTS.includes(x.name),
 ) as Extract<(typeof perpMarketAbi)[number], { type: "event" }>[];
@@ -197,6 +225,8 @@ type IndexedEvent = {
   amount?: string;
   pnl?: string;
   reward?: string;
+  fraction?: string;
+  marginDelta?: string;
 };
 
 type FundingRecord = {
@@ -461,6 +491,14 @@ function decodeIndexed(log: Log, market: string): IndexedEvent | null {
     case "PositionClosed":
       base.pnl = wad(a.pnl as bigint, 2);
       break;
+    case "PartialClosed":
+      base.pnl = wad(a.pnl as bigint, 2);
+      base.fraction = wad(a.fraction as bigint, 4);
+      break;
+    case "MarginAdjusted":
+      base.margin = wad(a.newMargin as bigint, 2);
+      base.marginDelta = wad(a.marginDelta as bigint, 2);
+      break;
     case "Liquidated":
       base.reward = wad(a.reward as bigint, 2);
       break;
@@ -545,6 +583,11 @@ async function mergeIndex(env: Env, evs: IndexedEvent[]): Promise<void> {
         break;
       case "PositionClosed":
         stats.closes++;
+        row.realizedPnl = (parseFloat(row.realizedPnl) + parseFloat(e.pnl || "0")).toString();
+        break;
+      case "PartialClosed":
+        // A partial close realizes PnL but leaves the position open, so it
+        // counts toward realized PnL without incrementing the close stat.
         row.realizedPnl = (parseFloat(row.realizedPnl) + parseFloat(e.pnl || "0")).toString();
         break;
       case "Liquidated":
