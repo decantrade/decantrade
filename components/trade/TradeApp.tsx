@@ -581,7 +581,7 @@ export function TradeApp() {
       )}
 
       {/* Market tabs */}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-3 flex gap-2">
         {(Object.keys(MARKETS) as MarketKey[]).map((k) => (
           <button
             key={k}
@@ -595,6 +595,27 @@ export function TradeApp() {
             {MARKETS[k]!.label}
           </button>
         ))}
+      </div>
+
+      {/* Verify the active market + collateral on the block explorer */}
+      <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-dim">
+        <span className="uppercase tracking-[0.12em]">Verify on {network.guarded ? "Basescan" : "explorer"}:</span>
+        <a
+          href={`${network.explorer}/address/${market.address}`}
+          target="_blank"
+          rel="noreferrer"
+          className="font-mono text-ink-soft transition-colors hover:text-amber"
+        >
+          {market.label} {market.address.slice(0, 6)}…{market.address.slice(-4)} ↗
+        </a>
+        <a
+          href={`${network.explorer}/address/${ADDRESSES.usdc}`}
+          target="_blank"
+          rel="noreferrer"
+          className="font-mono text-ink-soft transition-colors hover:text-amber"
+        >
+          {network.collateralLabel} {ADDRESSES.usdc.slice(0, 6)}…{ADDRESSES.usdc.slice(-4)} ↗
+        </a>
       </div>
 
       {/* Price chart */}

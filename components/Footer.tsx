@@ -1,10 +1,20 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { TokenBadge } from "./TokenBadge";
+import { NETWORKS } from "@/lib/decant";
 
 const SOCIALS = [
   { label: "X", href: "https://x.com/_decantrade" },
   { label: "GitHub", href: "https://github.com/decantrade/decantrade" },
+];
+
+// On-chain contracts (Base mainnet) for one-click verification on Basescan.
+const MAINNET = NETWORKS.mainnet;
+const CONTRACTS: { label: string; address: `0x${string}` }[] = [
+  ...(Object.values(MAINNET.markets)
+    .filter((m): m is NonNullable<typeof m> => !!m)
+    .map((m) => ({ label: m.label, address: m.address }))),
+  { label: "USDC", address: MAINNET.addresses.usdc },
 ];
 
 const LEGAL = [
@@ -54,6 +64,28 @@ export function Footer() {
               </Link>
             ))}
           </nav>
+        </div>
+
+        <div className="mt-8 border-t border-line pt-6">
+          <span className="text-[11px] uppercase tracking-[0.15em] text-ink-dim">
+            Contracts · Base mainnet
+          </span>
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+            {CONTRACTS.map((c) => (
+              <a
+                key={c.label}
+                href={`${MAINNET.explorer}/address/${c.address}`}
+                target="_blank"
+                rel="noreferrer"
+                className="group flex items-center gap-2 text-[11px] text-ink-dim transition-colors hover:text-amber"
+              >
+                <span className="uppercase tracking-[0.12em]">{c.label}</span>
+                <span className="font-mono text-ink-soft group-hover:text-amber">
+                  {c.address.slice(0, 6)}…{c.address.slice(-4)} ↗
+                </span>
+              </a>
+            ))}
+          </div>
         </div>
 
         <div className="mt-8 flex flex-col gap-2 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
