@@ -19,9 +19,9 @@
     "CHAIN_ID": "8453",
     // Guarded ETH/USD + BTC/USD + SOL/USD markets on Base mainnet (chain 8453).
     // See contracts/deployments/base-mainnet.md.
-    "MARKETS": "ETH:0x97650B15CD4042e29eB3429BF2238cfc272580A7,BTC:0x34ce53a7a0b7cBbe77b4e7CBC43e4EE3bD9879Da,SOL:0x946252cBD614E6831AafD4b4AF4b9e389382bfB4",
-    // Markets redeployed (partial-close/adjust-margin) at block ~47367540; start just before.
-    "START_BLOCK": "47367500"
+    "MARKETS": "ETH:0x2A984D3e130e1Ee50c7A16E9875F874665eF3e77,BTC:0x1FD1CefceD2090597A45bc73baF53617917c645A,SOL:0xb9E9CDDd0C94197724EABc9620ee93E9C63F857b",
+    // Markets redeployed (index-based PnL) at block ~47378710; start just before.
+    "START_BLOCK": "47378680"
   },
   // SEPARATE KV namespace from the testnet keeper (created via
   // `wrangler kv namespace create KEEPER_KV_MAINNET`). Binding name stays

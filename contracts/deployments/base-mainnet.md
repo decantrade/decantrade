@@ -1,26 +1,26 @@
 # Decant — Base mainnet (chain 8453) deployment — GUARDED BETA
 
-Deployed via `script/DeployBaseMainnetGuarded.s.sol` (ETH/USD) and
-`script/DeployBaseMainnetBtcSol.s.sol` (BTC/USD + SOL/USD). **Unaudited.**
-Holder-gated ($DECANT) with small per-wallet and open-interest caps and reduced
-leverage. Each market seeds its vAMM at the live Pyth price so mark ≈ index at
-launch. Explorer: https://basescan.org
+Deployed via `script/DeployBaseMainnetIndexPnl.s.sol` (ETH/USD + BTC/USD +
+SOL/USD). **Unaudited.** Holder-gated ($DECANT) with small per-wallet and
+open-interest caps and reduced leverage. Each market seeds its vAMM at the live
+Pyth price so mark ≈ index at launch. Explorer: https://basescan.org
 
-> **Redeployed** to add `closePartial` / `addMargin` / `removeMargin` (partial
-> close + adjust margin). New addresses below; the previous markets are
-> abandoned (their state, incl. the prior $200 insurance on the old ETH market,
-> stays locked there). New markets re-seed insurance from scratch.
+> **Redeployed** to switch PnL/sizing to oracle-priced (index-based) PnL: PnL =
+> size × (oracle price − entry oracle price), so profit tracks the real asset
+> price instead of the vAMM mark. Funding (mark vs index) is unchanged. New
+> addresses below; the previous markets are abandoned (their locked state,
+> incl. the prior insurance, stays there). New markets start with $0 insurance.
 
 | Contract | Address |
 | --- | --- |
 | USDC (collateral, 6 dec) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 | Pyth (Base mainnet) | `0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a` |
-| ETH/USD oracle (PythOracle) | `0x2d1bd991dae8a6c7d5bfda0e64f4c30bab994868` |
-| ETH/USD market (PerpMarket) | `0x97650B15CD4042e29eB3429BF2238cfc272580A7` |
-| BTC/USD oracle (PythOracle) | `0xd01a569257809118fec418679da2fbf9664bb5ec` |
-| BTC/USD market (PerpMarket) | `0x34ce53a7a0b7cBbe77b4e7CBC43e4EE3bD9879Da` |
-| SOL/USD oracle (PythOracle) | `0x1f3b254e3ec56660c720cdb61ad85d426d510aad` |
-| SOL/USD market (PerpMarket) | `0x946252cBD614E6831AafD4b4AF4b9e389382bfB4` |
+| ETH/USD oracle (PythOracle) | `0x531346F4f474280920a565325cD4e7bB51171e84` |
+| ETH/USD market (PerpMarket) | `0x2A984D3e130e1Ee50c7A16E9875F874665eF3e77` |
+| BTC/USD oracle (PythOracle) | `0x7EBA869FB52cF4FC80653747fA93D1eD24F0E086` |
+| BTC/USD market (PerpMarket) | `0x1FD1CefceD2090597A45bc73baF53617917c645A` |
+| SOL/USD oracle (PythOracle) | `0x23D62ED89FCB09c9c434Aeb01fa44011d5824fDB` |
+| SOL/USD market (PerpMarket) | `0xb9E9CDDd0C94197724EABc9620ee93E9C63F857b` |
 | $DECANT (gate token, 18 dec) | `0x10feE05Ef916625FD86b2fED432e325bE897BBa3` |
 | Deployer / current owner | `0xC5e1d8AC5aECb1dB7C04f9f7A8d7C08A8824720C` |
 
@@ -33,9 +33,9 @@ launch. Explorer: https://basescan.org
 | Max open interest | $2,000 (`maxOpenInterest = 2000e18`) |
 | Max leverage | 10x (`maxLeverage = 10e18`) |
 | Paused | false |
-| Seed price ETH (mark = index) | ~$1,764.60 |
-| Seed price BTC (mark = index) | ~$66,199.68 |
-| Seed price SOL (mark = index) | ~$71.83 |
+| Seed price ETH (mark = index) | ~$1,827.72 |
+| Seed price BTC (mark = index) | ~$66,824.92 |
+| Seed price SOL (mark = index) | ~$75.19 |
 
 The same guard config (gate / caps / leverage) is applied to all three markets.
 The trading wallet `0xc1CdDE11b0ed6b5fd0c0805B6B829310bbC16825` is allowlisted on
@@ -48,8 +48,8 @@ gated or pausable, so funds can always exit.
 ## Outstanding before public use
 
 - [ ] `transferOwnership` from the hot deployer EOA to a multisig/Safe.
-- [ ] Re-seed the insurance fund (`addInsurance`) with USDC on the new ETH market
-      (the prior $200 is stranded on the old ETH market).
+- [ ] Seed the insurance fund (`addInsurance`) with USDC on the new markets
+      (start $0; prior insurance is stranded on the abandoned markets).
 - [ ] Run the keeper (liquidation + funding) against chain 8453 + this market.
 - [ ] Audit before raising caps / leverage or removing the gate.
 

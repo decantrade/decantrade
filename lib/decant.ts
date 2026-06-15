@@ -95,17 +95,17 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
       ETH: {
         label: "ETH / USD",
         symbol: "ETH",
-        address: "0x97650B15CD4042e29eB3429BF2238cfc272580A7",
+        address: "0x2A984D3e130e1Ee50c7A16E9875F874665eF3e77",
       },
       BTC: {
         label: "BTC / USD",
         symbol: "BTC",
-        address: "0x34ce53a7a0b7cBbe77b4e7CBC43e4EE3bD9879Da",
+        address: "0x1FD1CefceD2090597A45bc73baF53617917c645A",
       },
       SOL: {
         label: "SOL / USD",
         symbol: "SOL",
-        address: "0x946252cBD614E6831AafD4b4AF4b9e389382bfB4",
+        address: "0xb9E9CDDd0C94197724EABc9620ee93E9C63F857b",
       },
     },
     keeperApi:
