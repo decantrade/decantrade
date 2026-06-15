@@ -65,11 +65,11 @@ export default function RoadmapPage() {
             Decant · perpetual futures on Base
           </p>
           <p className="mt-5 text-ink-soft">
-            Permissionless perpetual futures on Base — anyone can launch a
-            leveraged market for any Base token in ~60 seconds, no gatekeeper.
-            Decant is <strong>live on Base mainnet</strong> (guarded beta)
-            today — gated and capped while the path below leads to a hardened,
-            audited public launch.
+            On-chain perpetual futures on Base. Decant is{" "}
+            <strong>live on Base mainnet</strong> (guarded beta) today — ETH,
+            BTC and SOL markets, gated and capped while the path below leads to
+            a hardened, audited public launch with permissionless market
+            launches.
           </p>
 
           <Phase
@@ -83,11 +83,11 @@ export default function RoadmapPage() {
               },
               {
                 head: "/trade terminal",
-                body: "ETH / BTC / SOL markets, candlestick charts, deposit & withdraw collateral, open/close long & short, up to 50× leverage.",
+                body: "ETH / BTC / SOL markets, candlestick charts, deposit & withdraw collateral, open/close long & short, up to 10× leverage.",
               },
               {
-                head: "Permissionless market factory",
-                body: "Launch a new perp market for any Base token via Pyth feed or Uniswap V3 TWAP.",
+                head: "Market factory",
+                body: "MarketFactory deployed on-chain; new markets are launched by the team during the guarded beta. Self-serve permissionless launches open after audit.",
               },
               {
                 head: "Smart contracts (Base)",

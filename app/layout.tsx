@@ -18,9 +18,9 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://decantrade.com"),
-  title: "Decant | Permissionless Perp Markets on Base",
+  title: "Decant | On-chain Perp Futures on Base",
   description:
-    "Launch a leveraged perpetual market for any Base token in 60 seconds. No listing fees, no governance, fully on-chain. Coin-margined perps powered by Base.",
+    "Trade ETH, BTC and SOL perpetual futures on Base mainnet. Fully on-chain, USDC-margined, with a vAMM and insurance fund on every market. Guarded beta — real funds, gated, capped.",
   keywords: [
     "Decant",
     "perpetual futures",
@@ -31,18 +31,18 @@ export const metadata: Metadata = {
     "perps",
   ],
   openGraph: {
-    title: "Decant | Permissionless Perp Markets on Base",
+    title: "Decant | On-chain Perp Futures on Base",
     description:
-      "Launch a leveraged perpetual market for any Base token in 60 seconds. Fully on-chain, permissionless.",
+      "Trade ETH, BTC and SOL perps on Base mainnet. Fully on-chain, USDC-margined. Guarded beta.",
     url: "https://decantrade.com",
     siteName: "Decant",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Decant | Permissionless Perp Markets on Base",
+    title: "Decant | On-chain Perp Futures on Base",
     description:
-      "Launch a leveraged perpetual market for any Base token in 60 seconds.",
+      "Trade ETH, BTC and SOL perps on Base mainnet. Guarded beta — real funds, gated, capped.",
     site: "@_decantrade",
     creator: "@_decantrade",
   },

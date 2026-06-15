@@ -3,7 +3,7 @@ import { HeroMockup } from "./HeroMockup";
 
 const STATS = [
   { label: "Status", value: "mainnet beta" },
-  { label: "Leverage", value: "up to 50×" },
+  { label: "Leverage", value: "up to 10×" },
   { label: "Oracle", value: "Pyth + TWAP" },
   { label: "Chain", value: "Base · 8453" },
 ];
@@ -25,17 +25,17 @@ export function Hero() {
 
         <Reveal delay={0.05}>
           <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
-            Perp futures for{" "}
-            <span className="text-amber">every Base</span> token.
+            On-chain perp futures on{" "}
+            <span className="text-amber">Base</span>.
           </h1>
         </Reveal>
 
         <Reveal delay={0.1}>
           <p className="mt-7 max-w-xl text-sm leading-7 text-ink-soft sm:text-base">
-            Anyone launches a leveraged market on any Base token in 60
-            seconds — no listing fee, no governance vote, no gatekeeper.
-            Coin-margined, fully on-chain, with an insurance fund and a vAMM on
-            every market.
+            Trade ETH, BTC and SOL perps on Base mainnet — fully on-chain,
+            USDC-margined, with a vAMM and an insurance fund on every market.
+            Guarded beta: real funds, gated access, capped while the protocol
+            is hardened.
           </p>
         </Reveal>
 

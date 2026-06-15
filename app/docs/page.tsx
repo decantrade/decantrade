@@ -7,7 +7,7 @@ import { NETWORKS } from "@/lib/decant";
 export const metadata: Metadata = {
   title: "Docs · Decant",
   description:
-    "How Decant works: vAMM pricing, oracles, leverage & margin, funding, liquidation, the insurance fund, the permissionless market factory, and the Base mainnet contract addresses.",
+    "How Decant works: vAMM pricing, oracles, leverage & margin, funding, liquidation, the insurance fund, the market factory, and the Base mainnet contract addresses.",
   alternates: { canonical: "/docs" },
 };
 
@@ -37,11 +37,12 @@ export default function DocsPage() {
           <p className="updated">Decant · perpetual futures on Base</p>
 
           <p>
-            Decant is a permissionless perpetual-futures protocol on Base.
-            Anyone can launch a leveraged market for any token, and anyone can
-            trade it — fully on-chain, with no order book and no listing
-            gatekeeper. This page explains how the protocol works and how to use
-            the app at <Link href="/trade">/trade</Link>.
+            Decant is an on-chain perpetual-futures protocol on Base. Trade
+            ETH, BTC and SOL perps long or short — fully on-chain, with no
+            order book and USDC collateral. The market factory is permissionless
+            by design; self-serve launches open after audit. This page explains
+            how the protocol works and how to use the app at{" "}
+            <Link href="/trade">/trade</Link>.
           </p>
           <p>
             <strong>Status:</strong> live on <strong>Base mainnet</strong>{" "}
@@ -123,9 +124,12 @@ export default function DocsPage() {
             losses. Risk is isolated per market.
           </p>
 
-          <h2>6. Permissionless market factory</h2>
+          <h2>6. Market factory</h2>
           <p>
-            The <code>MarketFactory</code> lets anyone deploy a new market:
+            The <code>MarketFactory</code> is designed to let anyone deploy a
+            new market. During the guarded beta, market creation is operator-
+            gated and self-serve permissionless launches open after audit. The
+            factory exposes:
           </p>
           <ul>
             <li>
@@ -144,7 +148,7 @@ export default function DocsPage() {
             The creator chooses the oracle and initial reserves, but the factory
             locks collateral, risk parameters and ownership to the protocol
             governor — so a market creator cannot rug traders by changing the
-            rules after launch.
+            rules after launch. ETH, BTC and SOL are live today.
           </p>
 
           <h2>7. Using the app</h2>
@@ -189,10 +193,12 @@ export default function DocsPage() {
             beta — gated, capped and unaudited — so only trade what you can
             afford to lose.
           </p>
-          <h3>Do I need anyone&apos;s permission to launch a market?</h3>
+          <h3>Can I launch my own market?</h3>
           <p>
-            No — that is the point. Any token with a Pyth feed or a Uniswap V3
-            pool can have a market deployed via the factory.
+            Not yet. ETH, BTC and SOL are live now; during the guarded beta the
+            factory is operator-gated. Any token with a Pyth feed or a Uniswap
+            V3 pool can have a market deployed, and self-serve permissionless
+            launches open after audit.
           </p>
           <h3>How is the price kept honest?</h3>
           <p>

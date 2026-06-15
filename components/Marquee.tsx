@@ -1,10 +1,10 @@
 const ITEMS = [
-  "deploy in 60 seconds",
-  "permissionless perps",
+  "eth · btc · sol perps",
+  "on-chain perps",
   "built on base",
-  "no governance. no gatekeepers",
+  "non-custodial · no governance",
   "insurance fund on every market",
-  "coin-margined",
+  "usdc-margined",
   "don't trust, verify",
   "guarded beta — real funds, trade small",
 ];

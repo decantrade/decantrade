@@ -3,13 +3,13 @@ import { Reveal } from "./Reveal";
 const FEATURES = [
   {
     tag: "01",
-    title: "Permissionless launcher",
-    body: "Pick any Base token with a DEX pool, set leverage and trading fee, click deploy. The market goes live on-chain in about 60 seconds — no approval queue, no auction.",
+    title: "Curated markets",
+    body: "ETH, BTC and SOL perps are live on Base mainnet. More markets are added during the guarded beta; permissionless self-serve launches open up after the security audit.",
   },
   {
     tag: "02",
-    title: "Coin-margined",
-    body: "Traders deposit the same token they trade. Open a $DEGEN perp and your margin and PnL are denominated in $DEGEN — no USDC dependency required.",
+    title: "USDC-margined",
+    body: "Deposit real USDC on Base as collateral; your margin and PnL are denominated in USDC. Deposits are capped per wallet while the beta is gated.",
   },
   {
     tag: "03",

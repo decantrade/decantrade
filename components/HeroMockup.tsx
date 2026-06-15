@@ -65,7 +65,7 @@ export function HeroMockup() {
           <span className="px-2 py-1 text-ink-dim">BTC / USD</span>
           <span className="px-2 py-1 text-ink-dim">SOL / USD</span>
           <span className="ml-auto rounded-sm border border-line px-2 py-1 text-ink-soft">
-            50×
+            10×
           </span>
         </div>
 
@@ -161,13 +161,13 @@ export function HeroMockup() {
           </span>
         </div>
 
-        {/* permissionless footer */}
+        {/* status footer */}
         <div className="flex items-center justify-between border-t border-line bg-bg-soft px-4 py-2.5">
           <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-ink-soft">
-            <span className="text-amber">+</span> Launch any market
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-green" /> Guarded beta
           </span>
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-            permissionless
+            real USDC · capped
           </span>
         </div>
       </div>
