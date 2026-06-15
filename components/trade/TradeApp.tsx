@@ -620,9 +620,9 @@ export function TradeApp() {
       ) : locked ? (
         <WaitlistGate address={address} />
       ) : (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-5">
           {/* Collateral */}
-          <div className="rounded-xl border border-line bg-panel p-5">
+          <div className="rounded-xl border border-line bg-panel p-5 md:col-span-2">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-ink-soft">
               Collateral
             </h2>
@@ -707,7 +707,7 @@ export function TradeApp() {
           </div>
 
           {/* Trade / Position */}
-          <div className="rounded-xl border border-line bg-panel p-5">
+          <div className="rounded-xl border border-line bg-panel p-5 md:col-span-3">
             {hasPosition ? (
               <>
                 <div className="mb-4 flex items-center justify-between">
@@ -855,13 +855,13 @@ export function TradeApp() {
               </>
             ) : (
               <>
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-ink-soft">
+                <h2 className="mb-5 text-base font-semibold uppercase tracking-wider text-ink-soft">
                   Open position
                 </h2>
-                <div className="mb-4 grid grid-cols-2 gap-2">
+                <div className="mb-4 grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setSide("long")}
-                    className={`rounded-lg border px-4 py-2.5 text-sm font-semibold ${
+                    className={`rounded-lg border px-4 py-3 text-base font-semibold ${
                       side === "long"
                         ? "border-green bg-green/10 text-green"
                         : "border-line text-ink-soft"
@@ -871,7 +871,7 @@ export function TradeApp() {
                   </button>
                   <button
                     onClick={() => setSide("short")}
-                    className={`rounded-lg border px-4 py-2.5 text-sm font-semibold ${
+                    className={`rounded-lg border px-4 py-3 text-base font-semibold ${
                       side === "short"
                         ? "border-wine bg-wine/10 text-wine"
                         : "border-line text-ink-soft"
@@ -880,12 +880,12 @@ export function TradeApp() {
                     Short
                   </button>
                 </div>
-                <label className="mb-1 block text-xs text-ink-dim">Margin (USD)</label>
+                <label className="mb-1.5 block text-sm text-ink-dim">Margin (USD)</label>
                 <input
                   value={margin}
                   onChange={(e) => setMargin(e.target.value)}
                   inputMode="decimal"
-                  className="mb-3 w-full rounded-lg border border-line bg-bg px-3 py-2.5 font-mono text-sm outline-none focus:border-amber"
+                  className="mb-3 w-full rounded-lg border border-line bg-bg px-3 py-3 font-mono text-base outline-none focus:border-amber"
                 />
                 <div className="mb-1.5 flex justify-between text-xs text-ink-dim">
                   <span>Leverage</span>
@@ -948,7 +948,7 @@ export function TradeApp() {
                 <button
                   onClick={open}
                   disabled={!!busy || wrongNetwork || Number(margin) <= 0}
-                  className="w-full rounded-lg bg-amber px-4 py-2.5 text-sm font-semibold text-bg disabled:opacity-40"
+                  className="w-full rounded-lg bg-amber px-4 py-3.5 text-base font-semibold text-bg disabled:opacity-40"
                 >
                   {busy === "open"
                     ? "Opening…"
