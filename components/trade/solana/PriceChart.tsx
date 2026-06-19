@@ -1,111 +1,217 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  AreaSeries,
+  CandlestickSeries,
+  ColorType,
+  CrosshairMode,
+  createChart,
+  LineStyle,
+  type AreaData,
+  type CandlestickData,
+  type IChartApi,
+  type ISeriesApi,
+  type UTCTimestamp,
+} from "lightweight-charts";
 
-type Pt = { t: number; c: number };
-type CandlesResponse = { source: string; candles: number[][] };
+type CoinbaseCandle = [number, number, number, number, number, number]; // [time, low, high, open, close, volume]
+
+const TIMEFRAMES = [
+  { label: "1H", granularity: 3600 },
+  { label: "6H", granularity: 21600 },
+  { label: "1D", granularity: 86400 },
+] as const;
+
+const COLORS = {
+  bg: "transparent",
+  grid: "rgba(255,255,255,0.05)",
+  ink: "#ece4d6",
+  inkDim: "#8a8073",
+  up: "#6fcf97",
+  down: "#c2566a",
+  amber: "#e8b84b",
+};
 
 const fmtUsd = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Lightweight SOL/USD chart (no chart lib). Data comes from the app's
-// allow-listed /api/candles proxy (Coinbase → Binance fallback). The market
-// index is keeper-pushed from the same Pyth SOL/USD feed, so this reflects the
-// price the perp actually settles against.
-export default function PriceChart() {
-  const [pts, setPts] = useState<Pt[] | null>(null);
-  const [err, setErr] = useState(false);
+async function fetchCandles(granularity: number): Promise<CandlestickData[]> {
+  const res = await fetch(`/api/candles?product=SOL-USD&granularity=${granularity}`);
+  if (!res.ok) throw new Error(`candles ${res.status}`);
+  const { candles: raw } = (await res.json()) as { candles: CoinbaseCandle[] };
+  return raw
+    .map(([time, low, high, open, close]) => ({
+      time: time as UTCTimestamp,
+      open,
+      high,
+      low,
+      close,
+    }))
+    .sort((a, b) => (a.time as number) - (b.time as number));
+}
 
+// SOL/USD candlestick chart (TradingView lightweight-charts). The market index
+// is keeper-pushed from the same Pyth SOL/USD feed, so this reflects the price
+// the perp actually settles against. Data via the allow-listed /api/candles
+// proxy (Coinbase → Binance fallback).
+export default function PriceChart() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const areaRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const [granularity, setGranularity] = useState<number>(3600);
+  const [mode, setMode] = useState<"candles" | "area">("candles");
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [stats, setStats] = useState<{ last: number; chg: number } | null>(null);
+
+  // Create the chart once.
   useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/candles?product=SOL-USD&granularity=3600");
-        if (!res.ok) throw new Error("candles");
-        const json = (await res.json()) as CandlesResponse;
-        // candle = [time(s), low, high, open, close, volume]. Coinbase returns
-        // newest-first, Binance oldest-first — sort ascending, keep last ~48h.
-        const data = [...json.candles]
-          .sort((a, b) => a[0] - b[0])
-          .slice(-48)
-          .map((k) => ({ t: k[0], c: k[4] }));
-        if (alive) {
-          setPts(data);
-          setErr(false);
-        }
-      } catch {
-        if (alive) setErr(true);
-      }
-    };
-    load();
-    const id = setInterval(load, 60_000);
+    const el = containerRef.current;
+    if (!el) return;
+    const chart = createChart(el, {
+      autoSize: true,
+      layout: {
+        background: { type: ColorType.Solid, color: COLORS.bg },
+        textColor: COLORS.inkDim,
+        fontFamily: "var(--font-mono, ui-monospace, monospace)",
+        fontSize: 11,
+      },
+      grid: {
+        vertLines: { color: COLORS.grid },
+        horzLines: { color: COLORS.grid },
+      },
+      rightPriceScale: { borderColor: COLORS.grid },
+      timeScale: { borderColor: COLORS.grid, timeVisible: true, secondsVisible: false },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: COLORS.inkDim, width: 1, style: LineStyle.Dashed, labelBackgroundColor: COLORS.amber },
+        horzLine: { color: COLORS.inkDim, width: 1, style: LineStyle.Dashed, labelBackgroundColor: COLORS.amber },
+      },
+    });
+    const candle = chart.addSeries(CandlestickSeries, {
+      upColor: COLORS.up,
+      downColor: COLORS.down,
+      borderUpColor: COLORS.up,
+      borderDownColor: COLORS.down,
+      wickUpColor: COLORS.up,
+      wickDownColor: COLORS.down,
+      priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+    });
+    const area = chart.addSeries(AreaSeries, {
+      lineColor: COLORS.amber,
+      lineWidth: 2,
+      topColor: "rgba(232,184,75,0.22)",
+      bottomColor: "rgba(232,184,75,0)",
+      priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+      visible: false,
+    });
+    chartRef.current = chart;
+    candleRef.current = candle;
+    areaRef.current = area;
     return () => {
-      alive = false;
-      clearInterval(id);
+      chart.remove();
+      chartRef.current = null;
+      candleRef.current = null;
+      areaRef.current = null;
     };
   }, []);
 
-  if (err || (pts && pts.length < 2)) return null;
-  if (!pts) return <div className="chart skeleton" aria-hidden />;
+  // Toggle series visibility on mode change.
+  useEffect(() => {
+    candleRef.current?.applyOptions({ visible: mode === "candles" });
+    areaRef.current?.applyOptions({ visible: mode === "area" });
+  }, [mode]);
 
-  const W = 520;
-  const H = 132;
-  const padX = 4;
-  const padY = 10;
-  const closes = pts.map((p) => p.c);
-  const min = Math.min(...closes);
-  const max = Math.max(...closes);
-  const span = max - min || 1;
-  const x = (i: number) => padX + (i / (pts.length - 1)) * (W - padX * 2);
-  const y = (c: number) => padY + (1 - (c - min) / span) * (H - padY * 2);
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)} ${y(p.c).toFixed(1)}`).join(" ");
-  const area = `${line} L${x(pts.length - 1).toFixed(1)} ${H} L${x(0).toFixed(1)} ${H} Z`;
-  const first = closes[0];
-  const last = closes[closes.length - 1];
-  const up = last >= first;
-  const chg = ((last - first) / first) * 100;
-  const stroke = up ? "var(--green)" : "var(--red)";
-  const mid = (max + min) / 2;
-  // Last point position as a % of the box, for the HTML dot/pill overlay.
-  const lastLeft = (x(pts.length - 1) / W) * 100;
-  const lastTop = (y(last) / H) * 100;
+  // Load data whenever timeframe changes; refresh periodically.
+  useEffect(() => {
+    let cancelled = false;
+    const load = (initial: boolean) => {
+      if (initial) setStatus("loading");
+      fetchCandles(granularity)
+        .then((data) => {
+          if (cancelled || !candleRef.current || !areaRef.current) return;
+          candleRef.current.setData(data);
+          areaRef.current.setData(
+            data.map((d) => ({ time: d.time, value: d.close })) as AreaData[],
+          );
+          if (initial) chartRef.current?.timeScale().fitContent();
+          if (data.length >= 2) {
+            const first = data[0].close;
+            const last = data[data.length - 1].close;
+            setStats({ last, chg: ((last - first) / first) * 100 });
+          }
+          setStatus("ready");
+        })
+        .catch(() => {
+          if (!cancelled) setStatus("error");
+        });
+    };
+    load(true);
+    const id = setInterval(() => load(false), 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [granularity]);
+
+  const up = (stats?.chg ?? 0) >= 0;
 
   return (
-    <div className="chart">
-      <div className="chart-head">
-        <span className="chart-label">SOL / USD · 48h</span>
-        <span className="chart-chg" style={{ color: stroke }}>
-          {up ? "▲ " : "▼ "}
-          {up ? "+" : ""}
-          {chg.toFixed(2)}%
-        </span>
+    <div className="chart2">
+      <div className="chart2-head">
+        <div className="chart2-title">
+          <span className="chart2-pair">SOL / USD</span>
+          {stats && (
+            <>
+              <span className="chart2-last">{fmtUsd(stats.last)}</span>
+              <span className="chart2-chg" style={{ color: up ? COLORS.up : COLORS.down }}>
+                {up ? "▲ +" : "▼ "}
+                {stats.chg.toFixed(2)}%
+              </span>
+            </>
+          )}
+        </div>
+        <div className="chart2-tools">
+          <div className="chart2-seg">
+            <button
+              type="button"
+              className={mode === "candles" ? "on" : ""}
+              onClick={() => setMode("candles")}
+              aria-label="Candlestick view"
+            >
+              Candles
+            </button>
+            <button
+              type="button"
+              className={mode === "area" ? "on" : ""}
+              onClick={() => setMode("area")}
+              aria-label="Area view"
+            >
+              Area
+            </button>
+          </div>
+          <div className="chart2-seg">
+            {TIMEFRAMES.map((tf) => (
+              <button
+                key={tf.label}
+                type="button"
+                className={granularity === tf.granularity ? "on" : ""}
+                onClick={() => setGranularity(tf.granularity)}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="chart-body">
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="chart-svg">
-          <defs>
-            <linearGradient id="solChartFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor={stroke} stopOpacity="0.22" />
-              <stop offset="1" stopColor={stroke} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <line x1="0" y1={y(max)} x2={W} y2={y(max)} className="chart-grid" />
-          <line x1="0" y1={y(mid)} x2={W} y2={y(mid)} className="chart-grid" />
-          <line x1="0" y1={y(min)} x2={W} y2={y(min)} className="chart-grid" />
-          <path d={area} fill="url(#solChartFill)" />
-          <path d={line} fill="none" stroke={stroke} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        </svg>
-        <span className="chart-ax chart-ax-hi">{fmtUsd(max)}</span>
-        <span className="chart-ax chart-ax-lo">{fmtUsd(min)}</span>
-        <span
-          className="chart-dot"
-          style={{ left: `${lastLeft}%`, top: `${lastTop}%`, background: stroke }}
-        />
-        <span
-          className="chart-now"
-          style={{ top: `${lastTop}%`, color: stroke, borderColor: stroke }}
-        >
-          {fmtUsd(last)}
-        </span>
+      <div className="chart2-body">
+        <div ref={containerRef} className="chart2-canvas" />
+        {status !== "ready" && (
+          <div className="chart2-overlay">
+            {status === "error" ? "chart unavailable" : "loading chart…"}
+          </div>
+        )}
       </div>
     </div>
   );

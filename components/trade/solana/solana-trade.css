@@ -102,6 +102,38 @@
   font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
   background: rgba(10,8,7,0.78); border: 1px solid; border-radius: 3px; padding: 1px 5px; pointer-events: none;
 }
+.solana-trade .chart2 { margin-top: 12px; }
+.solana-trade .chart2-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.solana-trade .chart2-title { display: flex; align-items: baseline; gap: 8px; }
+.solana-trade .chart2-pair {
+  font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted);
+}
+.solana-trade .chart2-last { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.solana-trade .chart2-chg { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.solana-trade .chart2-tools { display: flex; gap: 6px; }
+.solana-trade .chart2-seg {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+}
+.solana-trade .chart2-seg button {
+  appearance: none; background: transparent; border: none; cursor: pointer;
+  color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  padding: 3px 9px; transition: background 0.12s, color 0.12s;
+}
+.solana-trade .chart2-seg button + button { border-left: 1px solid var(--border); }
+.solana-trade .chart2-seg button:hover { color: var(--text); }
+.solana-trade .chart2-seg button.on { background: rgba(232,184,75,0.12); color: var(--accent); }
+.solana-trade .chart2-body { position: relative; }
+.solana-trade .chart2-canvas {
+  width: 100%; height: 260px; border-radius: 4px;
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+}
+.solana-trade .chart2-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--muted); pointer-events: none;
+}
 .solana-trade label {
   display: flex;
   align-items: center;
