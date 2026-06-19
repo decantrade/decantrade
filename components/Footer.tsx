@@ -59,18 +59,21 @@ export function Footer() {
           <span className="uppercase tracking-[0.15em]">
             devnet · pre-audit · not real money
           </span>
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
-            <span>
-              Built by{" "}
-              <a
-                href="https://x.com/avantisfi"
-                target="_blank"
-                rel="noreferrer"
-                className="text-ink-soft transition-colors hover:text-amber"
-              >
-                @avantisfi
-              </a>
-            </span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <a
+              href="https://orynth.dev/projects/decant"
+              target="_blank"
+              rel="noopener"
+              className="transition-opacity hover:opacity-80"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://orynth.dev/api/badge/decant?theme=light&style=default"
+                alt="Featured on Orynth"
+                width={130}
+                height={40}
+              />
+            </a>
             <span>
               © {new Date().getFullYear()} Decant. Not financial advice.
             </span>

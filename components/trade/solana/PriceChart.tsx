@@ -7,15 +7,18 @@ import {
   ColorType,
   CrosshairMode,
   createChart,
+  HistogramSeries,
   LineStyle,
   type AreaData,
   type CandlestickData,
+  type HistogramData,
   type IChartApi,
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
 
 type CoinbaseCandle = [number, number, number, number, number, number]; // [time, low, high, open, close, volume]
+type Candle = { time: UTCTimestamp; open: number; high: number; low: number; close: number; volume: number };
 
 const TIMEFRAMES = [
   { label: "1H", granularity: 3600 },
@@ -31,39 +34,70 @@ const COLORS = {
   up: "#6fcf97",
   down: "#c2566a",
   amber: "#e8b84b",
+  volUp: "rgba(111,207,151,0.4)",
+  volDown: "rgba(194,86,106,0.4)",
 };
 
 const fmtUsd = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-async function fetchCandles(granularity: number): Promise<CandlestickData[]> {
+const fmtCompact = (n: number) =>
+  n >= 1e9
+    ? `${(n / 1e9).toFixed(2)}B`
+    : n >= 1e6
+      ? `${(n / 1e6).toFixed(2)}M`
+      : n >= 1e3
+        ? `${(n / 1e3).toFixed(1)}K`
+        : n.toFixed(0);
+
+async function fetchCandles(granularity: number): Promise<Candle[]> {
   const res = await fetch(`/api/candles?product=SOL-USD&granularity=${granularity}`);
   if (!res.ok) throw new Error(`candles ${res.status}`);
   const { candles: raw } = (await res.json()) as { candles: CoinbaseCandle[] };
   return raw
-    .map(([time, low, high, open, close]) => ({
+    .map(([time, low, high, open, close, volume]) => ({
       time: time as UTCTimestamp,
       open,
       high,
       low,
       close,
+      volume,
     }))
     .sort((a, b) => (a.time as number) - (b.time as number));
 }
 
-// SOL/USD candlestick chart (TradingView lightweight-charts). The market index
-// is keeper-pushed from the same Pyth SOL/USD feed, so this reflects the price
-// the perp actually settles against. Data via the allow-listed /api/candles
-// proxy (Coinbase → Binance fallback).
+type Stats24 = { last: number; chg: number; high: number; low: number; vol: number };
+
+// 24h rollup from hourly candles (independent of the chart timeframe so the
+// header/stats stay consistent when switching 1H/6H/1D).
+function rollup24h(hourly: Candle[]): Stats24 | null {
+  if (hourly.length < 2) return null;
+  const window = hourly.slice(-24);
+  const last = window[window.length - 1].close;
+  const first = window[0].open;
+  return {
+    last,
+    chg: ((last - first) / first) * 100,
+    high: Math.max(...window.map((c) => c.high)),
+    low: Math.min(...window.map((c) => c.low)),
+    vol: window.reduce((s, c) => s + c.volume, 0),
+  };
+}
+
+// SOL/USD candlestick chart (TradingView lightweight-charts) with a volume
+// histogram and a 24h stats strip. The market index is keeper-pushed from the
+// same Pyth SOL/USD feed, so this reflects the price the perp actually settles
+// against. Data via the allow-listed /api/candles proxy (Coinbase → Binance).
 export default function PriceChart() {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const areaRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const volRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const [granularity, setGranularity] = useState<number>(3600);
   const [mode, setMode] = useState<"candles" | "area">("candles");
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [stats, setStats] = useState<{ last: number; chg: number } | null>(null);
+  const [stats, setStats] = useState<Stats24 | null>(null);
 
   // Create the chart once.
   useEffect(() => {
@@ -81,7 +115,7 @@ export default function PriceChart() {
         vertLines: { color: COLORS.grid },
         horzLines: { color: COLORS.grid },
       },
-      rightPriceScale: { borderColor: COLORS.grid },
+      rightPriceScale: { borderColor: COLORS.grid, scaleMargins: { top: 0.08, bottom: 0.26 } },
       timeScale: { borderColor: COLORS.grid, timeVisible: true, secondsVisible: false },
       crosshair: {
         mode: CrosshairMode.Normal,
@@ -106,14 +140,22 @@ export default function PriceChart() {
       priceFormat: { type: "price", precision: 2, minMove: 0.01 },
       visible: false,
     });
+    const vol = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "vol",
+    });
+    // Pin the volume histogram to the bottom ~22% of the pane.
+    vol.priceScale().applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
     chartRef.current = chart;
     candleRef.current = candle;
     areaRef.current = area;
+    volRef.current = vol;
     return () => {
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;
       areaRef.current = null;
+      volRef.current = null;
     };
   }, []);
 
@@ -123,24 +165,26 @@ export default function PriceChart() {
     areaRef.current?.applyOptions({ visible: mode === "area" });
   }, [mode]);
 
-  // Load data whenever timeframe changes; refresh periodically.
+  // Load chart data whenever the timeframe changes; refresh periodically.
   useEffect(() => {
     let cancelled = false;
     const load = (initial: boolean) => {
       if (initial) setStatus("loading");
       fetchCandles(granularity)
         .then((data) => {
-          if (cancelled || !candleRef.current || !areaRef.current) return;
-          candleRef.current.setData(data);
-          areaRef.current.setData(
-            data.map((d) => ({ time: d.time, value: d.close })) as AreaData[],
+          if (cancelled || !candleRef.current || !areaRef.current || !volRef.current) return;
+          candleRef.current.setData(
+            data.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })) as CandlestickData[],
+          );
+          areaRef.current.setData(data.map((d) => ({ time: d.time, value: d.close })) as AreaData[]);
+          volRef.current.setData(
+            data.map((d) => ({
+              time: d.time,
+              value: d.volume,
+              color: d.close >= d.open ? COLORS.volUp : COLORS.volDown,
+            })) as HistogramData[],
           );
           if (initial) chartRef.current?.timeScale().fitContent();
-          if (data.length >= 2) {
-            const first = data[0].close;
-            const last = data[data.length - 1].close;
-            setStats({ last, chg: ((last - first) / first) * 100 });
-          }
           setStatus("ready");
         })
         .catch(() => {
@@ -154,6 +198,26 @@ export default function PriceChart() {
       clearInterval(id);
     };
   }, [granularity]);
+
+  // 24h stats from hourly candles, independent of the selected timeframe.
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetchCandles(3600)
+        .then((data) => {
+          if (cancelled) return;
+          const s = rollup24h(data);
+          if (s) setStats(s);
+        })
+        .catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   const up = (stats?.chg ?? 0) >= 0;
 
@@ -205,6 +269,29 @@ export default function PriceChart() {
           </div>
         </div>
       </div>
+      {stats && (
+        <div className="chart2-stats">
+          <span>
+            <i>24h change</i>
+            <b style={{ color: up ? COLORS.up : COLORS.down }}>
+              {up ? "+" : ""}
+              {stats.chg.toFixed(2)}%
+            </b>
+          </span>
+          <span>
+            <i>24h high</i>
+            <b>{fmtUsd(stats.high)}</b>
+          </span>
+          <span>
+            <i>24h low</i>
+            <b>{fmtUsd(stats.low)}</b>
+          </span>
+          <span>
+            <i>24h vol</i>
+            <b>{fmtCompact(stats.vol)} SOL</b>
+          </span>
+        </div>
+      )}
       <div className="chart2-body">
         <div ref={containerRef} className="chart2-canvas" />
         {status !== "ready" && (
