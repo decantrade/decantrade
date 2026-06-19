@@ -79,6 +79,12 @@
 .solana-trade .statrow .k { color: var(--muted); }
 .solana-trade .statrow .v { font-variant-numeric: tabular-nums; font-weight: 600; }
 .solana-trade .big { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.solana-trade .chart { margin-top: 12px; }
+.solana-trade .chart.skeleton { height: 96px; border-radius: 4px; background: rgba(255,255,255,0.03); }
+.solana-trade .chart-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.solana-trade .chart-label { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.solana-trade .chart-chg { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.solana-trade .chart-svg { display: block; width: 100%; height: 96px; }
 .solana-trade label {
   display: flex;
   align-items: center;

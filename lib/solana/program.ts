@@ -1,5 +1,5 @@
 import { AnchorProvider, Program, BN } from "@coral-xyz/anchor";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import idl from "./idl.json";
 import type { DecantSolana } from "./idlType";
 
@@ -61,6 +61,44 @@ export function getReadonlyProvider(): AnchorProvider {
     signAllTransactions: async (t: any) => t,
   };
   return new AnchorProvider(conn, wallet as any, { commitment: "confirmed" });
+}
+
+// Send a transaction and confirm by polling signature status over HTTP.
+// The RPC proxy (/api/rpc) is HTTP-only, so web3.js's default websocket-based
+// confirmation never resolves and times out even after the tx lands on-chain.
+// Polling getSignatureStatuses avoids the websocket entirely.
+export async function sendTx(
+  provider: AnchorProvider,
+  builder: { transaction: () => Promise<Transaction> },
+): Promise<string> {
+  const connection = provider.connection;
+  const wallet = provider.wallet;
+  const tx = await builder.transaction();
+  const latest = await connection.getLatestBlockhash("confirmed");
+  tx.feePayer = wallet.publicKey;
+  tx.recentBlockhash = latest.blockhash;
+  const signed = await wallet.signTransaction(tx);
+  const sig = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: false,
+    preflightCommitment: "confirmed",
+    maxRetries: 5,
+  });
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    const { value } = await connection.getSignatureStatuses([sig]);
+    const st = value[0];
+    if (st) {
+      if (st.err) throw new Error("transaction failed on-chain");
+      if (
+        st.confirmationStatus === "confirmed" ||
+        st.confirmationStatus === "finalized"
+      ) {
+        return sig;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  throw new Error("not confirmed in 60s (tx may still land)");
 }
 
 export const fmtUsd = (raw: number | BN | undefined): string => {

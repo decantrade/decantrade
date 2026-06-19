@@ -18,11 +18,13 @@ import {
   userBalancePda,
   positionPda,
   fmtUsd,
+  sendTx,
   USDC,
   MARKET_ID,
   NETWORK,
   IS_MAINNET,
 } from "@/lib/solana/program";
+import PriceChart from "./PriceChart";
 import "./solana-trade.css";
 
 type MarketState = {
@@ -133,7 +135,7 @@ export default function SolanaTrade() {
       const program = getProgram(provider!);
       const amt = new BN(Math.round(parseFloat(depAmt) * USDC));
       const userToken = await getAssociatedTokenAddress(m!.collateralMint, wallet.publicKey!);
-      return program.methods
+      const builder = program.methods
         .deposit(amt)
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -143,8 +145,8 @@ export default function SolanaTrade() {
           vault: vaultPda(market),
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const doWithdraw = () =>
@@ -152,7 +154,7 @@ export default function SolanaTrade() {
       const program = getProgram(provider!);
       const amt = new BN(Math.round(parseFloat(wdAmt || "0") * USDC));
       const userToken = await getAssociatedTokenAddress(m!.collateralMint, wallet.publicKey!);
-      return program.methods
+      const builder = program.methods
         .withdraw(amt)
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -161,15 +163,15 @@ export default function SolanaTrade() {
           userToken,
           vault: vaultPda(market),
           tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const doOpen = () =>
     run("Open " + side, async () => {
       const program = getProgram(provider!);
       const mg = new BN(Math.round(parseFloat(margin) * USDC));
-      return program.methods
+      const builder = program.methods
         .openPosition(side === "long", mg, new BN(lev))
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -177,14 +179,14 @@ export default function SolanaTrade() {
           userBalance: userBalancePda(market, wallet.publicKey!),
           position: positionPda(market, wallet.publicKey!),
           systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const doClose = () =>
     run("Close", async () => {
       const program = getProgram(provider!);
-      return program.methods
+      const builder = program.methods
         .closePosition()
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -192,8 +194,8 @@ export default function SolanaTrade() {
           userBalance: userBalancePda(market, wallet.publicKey!),
           position: positionPda(market, wallet.publicKey!),
           systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const notional = (parseFloat(margin) || 0) * lev;
@@ -254,6 +256,7 @@ export default function SolanaTrade() {
           <div className="card">
             <h2>SOL-PERP · Index</h2>
             <div className="big">{m ? fmtUsd(m.indexPrice) : "—"}</div>
+            <PriceChart />
             <div style={{ marginTop: 14 }}>
               <div className="statrow"><span className="k">Insurance (house)</span><span className="v">{m ? fmtUsd(m.insuranceFund) : "—"}</span></div>
               <div className="statrow"><span className="k">Open interest</span><span className="v">{m ? fmtUsd(m.totalOpenInterest) : "—"}</span></div>
