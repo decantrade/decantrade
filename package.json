@@ -14,7 +14,14 @@
     "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "0.31.1",
     "@neondatabase/serverless": "^1.1.0",
+    "@solana/spl-token": "0.4.9",
+    "@solana/wallet-adapter-base": "0.9.23",
+    "@solana/wallet-adapter-react": "0.15.35",
+    "@solana/wallet-adapter-react-ui": "0.9.35",
+    "@solana/wallet-adapter-wallets": "0.19.32",
+    "@solana/web3.js": "1.95.3",
     "@tanstack/react-query": "^5.100.14",
     "@walletconnect/ethereum-provider": "^2.21.1",
     "lightweight-charts": "^5.2.0",
