@@ -1,0 +1,21 @@
+{
+  "name": "decant-keeper-sol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Decant Solana keeper as a Cloudflare Cron Worker (Pyth index push + liquidations).",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@solana/web3.js": "^1.98.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250121.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.0.0"
+  }
+}

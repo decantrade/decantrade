@@ -18,11 +18,13 @@ import {
   userBalancePda,
   positionPda,
   fmtUsd,
+  sendTx,
   USDC,
   MARKET_ID,
   NETWORK,
   IS_MAINNET,
 } from "@/lib/solana/program";
+import PriceChart from "./PriceChart";
 import "./solana-trade.css";
 
 type MarketState = {
@@ -30,6 +32,7 @@ type MarketState = {
   insuranceFund: BN;
   totalOpenInterest: BN;
   maxLeverage: BN;
+  maintenanceMarginBps: number;
   tradingFeeBps: number;
   paused: boolean;
   collateralMint: PublicKey;
@@ -75,6 +78,7 @@ export default function SolanaTrade() {
         insuranceFund: mkt.insuranceFund,
         totalOpenInterest: mkt.totalOpenInterest,
         maxLeverage: mkt.maxLeverage,
+        maintenanceMarginBps: mkt.maintenanceMarginBps,
         tradingFeeBps: mkt.tradingFeeBps,
         paused: mkt.paused,
         collateralMint: mkt.collateralMint,
@@ -131,7 +135,7 @@ export default function SolanaTrade() {
       const program = getProgram(provider!);
       const amt = new BN(Math.round(parseFloat(depAmt) * USDC));
       const userToken = await getAssociatedTokenAddress(m!.collateralMint, wallet.publicKey!);
-      return program.methods
+      const builder = program.methods
         .deposit(amt)
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -141,8 +145,8 @@ export default function SolanaTrade() {
           vault: vaultPda(market),
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const doWithdraw = () =>
@@ -150,7 +154,7 @@ export default function SolanaTrade() {
       const program = getProgram(provider!);
       const amt = new BN(Math.round(parseFloat(wdAmt || "0") * USDC));
       const userToken = await getAssociatedTokenAddress(m!.collateralMint, wallet.publicKey!);
-      return program.methods
+      const builder = program.methods
         .withdraw(amt)
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -159,15 +163,15 @@ export default function SolanaTrade() {
           userToken,
           vault: vaultPda(market),
           tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const doOpen = () =>
     run("Open " + side, async () => {
       const program = getProgram(provider!);
       const mg = new BN(Math.round(parseFloat(margin) * USDC));
-      return program.methods
+      const builder = program.methods
         .openPosition(side === "long", mg, new BN(lev))
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -175,14 +179,14 @@ export default function SolanaTrade() {
           userBalance: userBalancePda(market, wallet.publicKey!),
           position: positionPda(market, wallet.publicKey!),
           systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const doClose = () =>
     run("Close", async () => {
       const program = getProgram(provider!);
-      return program.methods
+      const builder = program.methods
         .closePosition()
         .accountsPartial({
           owner: wallet.publicKey!,
@@ -190,8 +194,8 @@ export default function SolanaTrade() {
           userBalance: userBalancePda(market, wallet.publicKey!),
           position: positionPda(market, wallet.publicKey!),
           systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+        });
+      return sendTx(provider!, builder);
     });
 
   const notional = (parseFloat(margin) || 0) * lev;
@@ -204,30 +208,55 @@ export default function SolanaTrade() {
         pos.entryPrice.toNumber()
       : 0;
 
+  const posLeverage =
+    pos && pos.margin.toNumber() > 0
+      ? Math.abs(pos.sizeUsd.toNumber()) / pos.margin.toNumber()
+      : 0;
+
+  // Index-priced liquidation: equity (margin + PnL) hits the maintenance
+  // requirement (mm × current notional). Solved for the index price.
+  const liqPrice = (() => {
+    if (!pos || !m) return null;
+    const entry = pos.entryPrice.toNumber();
+    const size = pos.sizeUsd.toNumber();
+    const marginV = pos.margin.toNumber();
+    const s = Math.abs(size);
+    if (s === 0 || entry === 0) return null;
+    const mm = m.maintenanceMarginBps / 10000;
+    const p =
+      size > 0
+        ? (entry * (s - marginV)) / (s * (1 - mm))
+        : (entry * (s + marginV)) / (s * (1 + mm));
+    return p > 0 ? p : 0;
+  })();
+
   const netLabel = IS_MAINNET ? "Solana · mainnet" : "Solana · devnet";
 
   return (
     <div className="solana-trade">
       <div className="top">
         <div className="brand">
-          Decant Protocol <span className="badge">{netLabel}</span>
+          SOL-PERP <span className="badge">{netLabel}</span>
         </div>
         <WalletMultiButton />
       </div>
 
       {notFound && (
         <div className="banner warn">
-          Market belum di-init di {NETWORK} (program ada, market #{MARKET_ID.toString()} belum di-init).
-          Begitu market di-init, panel ini langsung hidup.
+          Market #{MARKET_ID.toString()} isn’t initialized on {NETWORK} yet (the program is
+          deployed; the market is not). This panel goes live as soon as it’s initialized.
         </div>
       )}
-      {m?.paused && <div className="banner">Market paused — open/deposit dimatiin.</div>}
+      {m?.paused && (
+        <div className="banner">Market paused — new deposits and positions are disabled.</div>
+      )}
 
       <div className="grid">
         <div style={{ display: "grid", gap: 16 }}>
           <div className="card">
             <h2>SOL-PERP · Index</h2>
             <div className="big">{m ? fmtUsd(m.indexPrice) : "—"}</div>
+            <PriceChart />
             <div style={{ marginTop: 14 }}>
               <div className="statrow"><span className="k">Insurance (house)</span><span className="v">{m ? fmtUsd(m.insuranceFund) : "—"}</span></div>
               <div className="statrow"><span className="k">Open interest</span><span className="v">{m ? fmtUsd(m.totalOpenInterest) : "—"}</span></div>
@@ -240,12 +269,22 @@ export default function SolanaTrade() {
             <h2>Collateral</h2>
             <div className="statrow"><span className="k">Free collateral</span><span className="v">{fmtUsd(free)}</span></div>
             <div className="statrow"><span className="k">Wallet USDC</span><span className="v">{walletUsdc === null ? "—" : fmtUsd(walletUsdc)}</span></div>
-            <label>Deposit (USDC)</label>
+            <label>
+              Deposit (USDC)
+              {walletUsdc !== null && walletUsdc > 0 && (
+                <button type="button" className="maxbtn" onClick={() => setDepAmt((walletUsdc / USDC).toString())}>Max</button>
+              )}
+            </label>
             <div className="row">
               <input value={depAmt} onChange={(e) => setDepAmt(e.target.value)} inputMode="decimal" />
               <button className="act neutral" style={{ marginTop: 0, flex: "0 0 110px" }} disabled={!provider || busy || m?.paused} onClick={doDeposit}>Deposit</button>
             </div>
-            <label>Withdraw (USDC)</label>
+            <label>
+              Withdraw (USDC)
+              {free > 0 && (
+                <button type="button" className="maxbtn" onClick={() => setWdAmt((free / USDC).toString())}>Max</button>
+              )}
+            </label>
             <div className="row">
               <input value={wdAmt} onChange={(e) => setWdAmt(e.target.value)} placeholder={(free / USDC).toString()} inputMode="decimal" />
               <button className="act ghost" style={{ marginTop: 0, flex: "0 0 110px" }} disabled={!provider || busy} onClick={doWithdraw}>Withdraw</button>
@@ -264,8 +303,10 @@ export default function SolanaTrade() {
                 </span>
               </div>
               <div className="statrow"><span className="k">Size (notional)</span><span className="v">{fmtUsd(Math.abs(pos.sizeUsd.toNumber()))}</span></div>
+              <div className="statrow"><span className="k">Leverage</span><span className="v">{posLeverage.toFixed(1)}×</span></div>
               <div className="statrow"><span className="k">Entry price</span><span className="v">{fmtUsd(pos.entryPrice)}</span></div>
               <div className="statrow"><span className="k">Margin</span><span className="v">{fmtUsd(pos.margin)}</span></div>
+              <div className="statrow"><span className="k">Est. liquidation</span><span className="v">{liqPrice ? fmtUsd(liqPrice) : "—"}</span></div>
               <button className="act ghost" disabled={!provider || busy} onClick={doClose}>Close position &amp; settle PnL</button>
             </div>
           ) : (
@@ -279,7 +320,7 @@ export default function SolanaTrade() {
               <input value={margin} onChange={(e) => setMargin(e.target.value)} inputMode="decimal" />
               <label>Leverage</label>
               <div className="lev">
-                {[2, 5, 10].filter((x) => !m || x <= m.maxLeverage.toNumber()).map((x) => (
+                {[2, 5, 10, 20].filter((x) => !m || x <= m.maxLeverage.toNumber()).map((x) => (
                   <button key={x} className={lev === x ? "on" : ""} onClick={() => setLev(x)}>{x}×</button>
                 ))}
               </div>
@@ -294,11 +335,11 @@ export default function SolanaTrade() {
           <div className="card">
             <h2>About</h2>
             <div className="note">
-              Index-priced perp (protocol = house). PnL = size × (index − entry) / entry,
-              dibayar dari insurance/house. {IS_MAINNET
-                ? "Guarded mainnet — dana asli, caps kecil, leverage rendah."
-                : "Devnet only — gak ada dana asli."}{" "}
-              Harga index di-push keeper dari Pyth.
+              Index-priced perp — the protocol is the counterparty (the house). PnL = size ×
+              (index − entry) / entry, paid from the insurance fund. {IS_MAINNET
+                ? "Guarded mainnet — real funds, small caps, low leverage."
+                : "Devnet only — test funds, no real money."}{" "}
+              The index price is pushed on-chain by a keeper from Pyth.
             </div>
           </div>
         </div>

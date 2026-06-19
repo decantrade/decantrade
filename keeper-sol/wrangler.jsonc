@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "decant-keeper-sol",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  // Push the Pyth SOL/USD index + liquidate under-margined positions each minute.
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    "MARKET_ID": "1"
+  }
+  // Secrets (set with `wrangler secret put` in this directory):
+  //   SOLANA_RPC_URL     — devnet RPC (Helius) the keeper reads/sends with
+  //   KEEPER_SECRET_KEY  — JSON array (64 bytes) of the market oracle_authority keypair
+  //   RUN_TOKEN          — token guarding the manual GET /run trigger
+}

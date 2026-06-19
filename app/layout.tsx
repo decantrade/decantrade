@@ -34,6 +34,14 @@ export const metadata: Metadata = {
     url: "https://decantrade.com",
     siteName: "Decant Protocol",
     type: "website",
+    images: [
+      {
+        url: "/brand/decant-og.png",
+        width: 1200,
+        height: 630,
+        alt: "Decant Protocol — index-priced perps on Solana",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -42,6 +50,7 @@ export const metadata: Metadata = {
       "Trade SOL-PERP index-priced perpetual futures on Solana. USDC-margined, guarded launch.",
     site: "@_decantrade",
     creator: "@_decantrade",
+    images: ["/brand/decant-og.png"],
   },
 };
 
