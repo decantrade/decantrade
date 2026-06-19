@@ -3,33 +3,33 @@ import { Reveal } from "./Reveal";
 const FEATURES = [
   {
     tag: "01",
-    title: "Permissionless launcher",
-    body: "Pick any Base token with a DEX pool, set leverage and trading fee, click deploy. The market goes live on-chain in about 60 seconds — no approval queue, no auction.",
+    title: "Deposit USDC",
+    body: "Connect Phantom or Solflare and deposit USDC as collateral. Your free collateral lives in the market vault and can be withdrawn any time.",
   },
   {
     tag: "02",
-    title: "Coin-margined",
-    body: "Traders deposit the same token they trade. Open a $DEGEN perp and your margin and PnL are denominated in $DEGEN — no USDC dependency required.",
+    title: "USDC-margined",
+    body: "Margin and PnL are denominated in USDC. Open a SOL-PERP long or short, pick your leverage, and the position is fully collateralized on-chain.",
   },
   {
     tag: "03",
-    title: "vAMM liquidity",
-    body: "A virtual AMM seeds instant liquidity at launch with a constant-impact curve. No need to bootstrap an order book before the first trade.",
+    title: "Index-priced",
+    body: "No vAMM. PnL is computed straight off the index — size × (exit − entry) / entry. The protocol is the house and pays winners from the insurance fund.",
   },
   {
     tag: "04",
-    title: "Oracle pricing",
-    body: "Pyth feeds where they exist; a Uniswap V3 TWAP fallback for long-tail tokens. Marks are derived on-chain, not from a centralized server.",
+    title: "Pyth oracle",
+    body: "The index price comes from Pyth. A keeper pushes the latest price on-chain so marks track the real market, not a centralized server.",
   },
   {
     tag: "05",
     title: "Insurance fund",
-    body: "Every market carries its own insurance fund, funded by trading fees, that absorbs bad debt from underwater liquidations. Risk is isolated per market.",
+    body: "Every market carries its own isolated insurance fund that backs trader payouts and absorbs bad debt from liquidations. Risk never spreads across markets.",
   },
   {
     tag: "06",
     title: "Fully on-chain",
-    body: "Positions, margin, funding and liquidations all settle on Base. Anyone can read the contract state and verify every number on BaseScan.",
+    body: "Positions, margin and liquidations all settle on Solana. Anyone can read the program state and verify every number on Solana Explorer.",
   },
 ];
 
@@ -46,9 +46,9 @@ export function HowItWorks() {
             Not a fragile AMM.
           </h2>
           <p className="mt-5 max-w-xl text-sm leading-7 text-ink-soft">
-            Trades execute against an on-chain vAMM using oracle-derived
-            pricing. The same engine runs every market — only the pricing knob
-            changes per token.
+            Positions settle against a Pyth index price, not a vAMM or an order
+            book. The protocol is the counterparty, with an isolated insurance
+            fund backing every market.
           </p>
         </Reveal>
 

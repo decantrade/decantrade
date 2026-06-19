@@ -31,6 +31,12 @@ export function isValidEvmAddress(addr: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(addr);
 }
 
+// Base58-encoded Solana public key (32 bytes → 32–44 base58 chars).
+// Format check only; cryptographic validity is enforced server-side.
+export function isValidSolanaAddress(addr: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr);
+}
+
 export function normalizeHandle(handle: string): string | null {
   const h = handle.trim().replace(/^@+/, "");
   if (!h) return null;
@@ -39,7 +45,7 @@ export function normalizeHandle(handle: string): string | null {
 }
 
 // Message a wallet signs to prove ownership when joining via wallet.
-// Gas-free — verified server-side with viem's verifyMessage.
+// Gas-free — verified server-side against the wallet's ed25519 public key.
 export function buildWaitlistMessage(
   address: string,
   code: string,
@@ -48,7 +54,7 @@ export function buildWaitlistMessage(
   return [
     "Decant — Waitlist verification",
     "",
-    "I am joining the Decant waitlist on Base.",
+    "I am joining the Decant waitlist on Solana.",
     "",
     `Address: ${address}`,
     `Invite code: ${code}`,

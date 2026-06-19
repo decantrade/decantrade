@@ -1,3 +1,6 @@
+> **Legacy (Base).** This Cron Worker targets the Base EVM contracts. The live protocol is now an
+> **index-priced Anchor program on Solana** — see the repo root [README](../README.md).
+
 # Decant keeper — Cloudflare Cron Worker
 
 A serverless version of the Decant keeper that runs on a Cloudflare **Cron

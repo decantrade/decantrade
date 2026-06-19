@@ -1,3 +1,7 @@
+> **Legacy (Base).** This is the original Base EVM implementation. The live protocol is now an
+> **index-priced Anchor program on Solana** — see the repo root [README](../README.md). These
+> contracts are retained for reference and are no longer deployed as the live system.
+
 # Decant Contracts — Perp Futures MVP (Base)
 
 Smart contracts for **Decant**, a permissionless perpetual futures exchange on Base.

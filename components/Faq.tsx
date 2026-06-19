@@ -3,11 +3,15 @@ import { Reveal } from "./Reveal";
 const FAQS = [
   {
     q: "What is Decant?",
-    a: "A permissionless perpetual-futures protocol on Base. Anyone can launch a leveraged market for any Base token, and anyone with a wallet can trade it long or short.",
+    a: "An index-priced perpetual-futures protocol on Solana. Trade SOL-PERP long or short with leverage, USDC-margined and fully on-chain. PnL settles against a Pyth index price.",
+  },
+  {
+    q: "How does index pricing work?",
+    a: "There is no vAMM. Your PnL is computed directly from a Pyth index price — size × (exit − entry) / entry. The protocol is the counterparty (house), and payouts are backed by each market's isolated insurance fund.",
   },
   {
     q: "Is it live with real money?",
-    a: "No. Decant is currently on Base testnet in lab mode. Public mainnet trading opens only after an external security audit. The waitlist is how you get early access.",
+    a: "No. Decant is currently on Solana devnet using test USDC. Public mainnet trading opens only after an external security audit. The waitlist is how you get early access.",
   },
   {
     q: "Why is the waitlist invite-only?",
@@ -15,15 +19,11 @@ const FAQS = [
   },
   {
     q: "What do I need to join?",
-    a: "A valid referral code, plus either a Base wallet (Coinbase Wallet, MetaMask) or an email. Wallet signups sign a gas-free message to prove ownership — no transaction, no approval.",
-  },
-  {
-    q: "Do wallet signups cost gas?",
-    a: "No. Joining the waitlist with a wallet only asks for an off-chain signature. It never moves funds and never prompts a token approval.",
+    a: "A valid referral code, plus either a Solana wallet (Phantom, Solflare) or an email. Wallet signups sign a gas-free message to prove ownership — no transaction, no approval.",
   },
   {
     q: "Which wallets are supported?",
-    a: "Coinbase Wallet and any injected wallet such as MetaMask or Rabbit. WalletConnect (mobile QR) support is coming.",
+    a: "Phantom and Solflare via the Solana wallet adapter. Connect on /trade to deposit USDC and open a position.",
   },
 ];
 

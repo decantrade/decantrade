@@ -60,12 +60,11 @@ export function HeroMockup() {
         {/* market tabs */}
         <div className="flex items-center gap-2 border-b border-line px-4 py-3 text-[11px]">
           <span className="rounded-sm border border-amber/60 bg-amber/10 px-2.5 py-1 font-semibold text-amber">
-            ETH / USD
+            SOL-PERP
           </span>
-          <span className="px-2 py-1 text-ink-dim">BTC / USD</span>
-          <span className="px-2 py-1 text-ink-dim">SOL / USD</span>
+          <span className="px-2 py-1 text-ink-dim">index-priced</span>
           <span className="ml-auto rounded-sm border border-line px-2 py-1 text-ink-soft">
-            50×
+            20×
           </span>
         </div>
 
@@ -73,9 +72,9 @@ export function HeroMockup() {
         <div className="relative px-4 pb-3 pt-4">
           <div className="mb-2 flex items-baseline gap-3">
             <span className="text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-              ETH / USD · price
+              SOL-PERP · index
             </span>
-            <span className="text-lg font-semibold text-ink">$1,921.48</span>
+            <span className="text-lg font-semibold text-ink">$71.00</span>
             <span className="text-[11px] text-green">+1.74%</span>
           </div>
           <svg
@@ -138,9 +137,9 @@ export function HeroMockup() {
         {/* stats */}
         <div className="grid grid-cols-3 gap-px border-t border-line bg-line">
           {[
-            { label: "Mark", value: "$1,921.48" },
-            { label: "Index", value: "$1,905.85" },
-            { label: "Funding", value: "+0.011%" },
+            { label: "Index", value: "$71.00" },
+            { label: "Insurance", value: "$5,000" },
+            { label: "Fee", value: "0.10%" },
           ].map((s) => (
             <div key={s.label} className="bg-panel px-4 py-3">
               <div className="text-[9px] uppercase tracking-[0.16em] text-ink-dim">
@@ -161,13 +160,13 @@ export function HeroMockup() {
           </span>
         </div>
 
-        {/* permissionless footer */}
+        {/* footer */}
         <div className="flex items-center justify-between border-t border-line bg-bg-soft px-4 py-2.5">
           <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-ink-soft">
-            <span className="text-amber">+</span> Launch any market
+            <span className="text-amber">◎</span> USDC-margined
           </span>
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-            permissionless
+            isolated margin
           </span>
         </div>
       </div>

@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { headers } from "next/headers";
-import { cookieToInitialState } from "wagmi";
 import "./globals.css";
-import { getConfig } from "@/lib/wagmi";
 import { Providers } from "./providers";
 
 const geistSans = Geist({
@@ -72,16 +69,11 @@ const jsonLd = {
   ],
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialState = cookieToInitialState(
-    getConfig(),
-    (await headers()).get("cookie"),
-  );
-
   return (
     <html
       lang="en"
@@ -92,7 +84,7 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <Providers initialState={initialState}>{children}</Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

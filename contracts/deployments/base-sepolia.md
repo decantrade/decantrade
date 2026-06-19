@@ -1,3 +1,6 @@
+> **Legacy (Base).** Superseded by the index-priced Anchor program on **Solana devnet** — see the
+> repo root [README](../../README.md). These Base Sepolia addresses are kept for historical reference.
+
 # Decant — Base Sepolia (chain 84532) deployment
 
 Deployed via `script/DeployBaseSepolia.s.sol`. Markets seeded at the live Pyth price.

@@ -28,7 +28,7 @@ export function NetworkStatus() {
     },
     {
       label: "Stage",
-      value: "testnet",
+      value: "devnet",
       sub: "audit pending · mainnet soon",
       accent: "text-amber",
     },
@@ -40,8 +40,8 @@ export function NetworkStatus() {
     },
     {
       label: "Max leverage",
-      value: "50×",
-      sub: "per-market configurable",
+      value: "20×",
+      sub: "SOL-PERP · USDC-margined",
       accent: "text-ink",
     },
   ];
@@ -58,7 +58,7 @@ export function NetworkStatus() {
               Live readout
             </h2>
             <span className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">
-              [readout] solana · testnet · pre-audit
+              [readout] solana · devnet · pre-audit
             </span>
           </div>
         </Reveal>

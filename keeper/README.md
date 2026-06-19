@@ -1,3 +1,6 @@
+> **Legacy (Base).** This keeper targets the Base EVM contracts. The live protocol is now an
+> **index-priced Anchor program on Solana** — see the repo root [README](../README.md).
+
 # Decant keeper + indexer
 
 Off-chain infrastructure for the Decant perp markets on Base:

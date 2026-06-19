@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import bs58 from "bs58";
 import { Reveal } from "./Reveal";
 import {
   CODE_LENGTH,
@@ -93,10 +95,9 @@ export function Waitlist() {
   const [result, setResult] = useState<JoinResult | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending: connecting } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { signMessageAsync } = useSignMessage();
+  const { publicKey, connected, disconnect, signMessage } = useWallet();
+  const { setVisible } = useWalletModal();
+  const address = publicKey?.toBase58();
 
   const formatValid = isValidCodeFormat(code);
 
@@ -224,8 +225,8 @@ export function Waitlist() {
   const canSubmit = useMemo(() => {
     if (!unlocked || submitting || !captchaReady) return false;
     if (method === "email") return isValidEmail(email);
-    return isConnected && !!address;
-  }, [unlocked, submitting, captchaReady, method, email, isConnected, address]);
+    return connected && !!address && !!signMessage;
+  }, [unlocked, submitting, captchaReady, method, email, connected, address, signMessage]);
 
   const submit = useCallback(async () => {
     setError(null);
@@ -235,10 +236,11 @@ export function Waitlist() {
       let payload: Record<string, unknown>;
 
       if (method === "wallet") {
-        if (!address) throw new Error("no_wallet");
+        if (!address || !signMessage) throw new Error("no_wallet");
         const issuedAt = new Date().toISOString();
         const message = buildWaitlistMessage(address, code, issuedAt);
-        const signature = await signMessageAsync({ message });
+        const sigBytes = await signMessage(new TextEncoder().encode(message));
+        const signature = bs58.encode(sigBytes);
         payload = {
           method: "wallet",
           code,
@@ -300,7 +302,7 @@ export function Waitlist() {
     company,
     turnstileToken,
     turnstileSitekey,
-    signMessageAsync,
+    signMessage,
   ]);
 
   const copy = useCallback((text: string) => {
@@ -324,7 +326,7 @@ export function Waitlist() {
             </h2>
             <p className="mt-6 max-w-md text-sm leading-7 text-ink-soft">
               The waitlist is gated. Paste a referral code from an existing
-              member and the form unlocks — finish in under a minute with a Base
+              member and the form unlocks — finish in under a minute with a
               wallet or an email.
             </p>
             <ul className="mt-8 space-y-3 text-[13px] text-ink-soft">
@@ -443,7 +445,7 @@ export function Waitlist() {
                     <div className="mt-4 space-y-3">
                       {method === "wallet" ? (
                         <div>
-                          {isConnected && address ? (
+                          {connected && address ? (
                             <div className="flex items-center justify-between rounded-sm border border-line bg-bg px-3 py-2.5">
                               <span className="font-mono text-sm text-ink">
                                 {shorten(address)}
@@ -457,22 +459,16 @@ export function Waitlist() {
                               </button>
                             </div>
                           ) : (
-                            <div className="space-y-2">
-                              {connectors.map((c) => (
-                                <button
-                                  key={c.uid}
-                                  type="button"
-                                  disabled={connecting}
-                                  onClick={() => connect({ connector: c })}
-                                  className="flex w-full items-center justify-between rounded-sm border border-line bg-bg px-3 py-2.5 text-sm text-ink transition-colors hover:border-amber/50 disabled:opacity-60"
-                                >
-                                  <span>{c.name}</span>
-                                  <span className="text-[11px] text-ink-dim">
-                                    connect →
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setVisible(true)}
+                              className="flex w-full items-center justify-between rounded-sm border border-line bg-bg px-3 py-2.5 text-sm text-ink transition-colors hover:border-amber/50"
+                            >
+                              <span>Connect Solana wallet</span>
+                              <span className="text-[11px] text-ink-dim">
+                                Phantom · Solflare →
+                              </span>
+                            </button>
                           )}
                         </div>
                       ) : (
@@ -530,7 +526,7 @@ export function Waitlist() {
 
                     <p className="mt-3 text-[11px] leading-5 text-ink-dim">
                       {method === "wallet"
-                        ? "Coinbase Wallet · MetaMask — sign-only, no gas, never moves funds."
+                        ? "Wallet sign-only — no gas, never moves funds."
                         : "One confirmation email. No spam, no drips."}
                     </p>
                   </div>
