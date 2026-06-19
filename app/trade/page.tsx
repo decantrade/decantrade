@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/Footer";
 import { MobileNav, type MobileNavLink } from "@/components/MobileNav";
-import { TradeApp } from "@/components/trade/TradeApp";
+import { SolanaTradeApp } from "@/components/trade/solana/SolanaTradeApp";
 
 const MOBILE_LINKS: MobileNavLink[] = [
   { label: "Home", href: "/", icon: "home" },
@@ -19,9 +19,9 @@ const MOBILE_SOCIALS: MobileNavLink[] = [
 ];
 
 export const metadata: Metadata = {
-  title: "Trade · Decant testnet",
+  title: "Trade · Decant Protocol",
   description:
-    "Trade perpetual futures on the Decant testnet app — ETH/USD and BTC/USD vAMM markets on Base Sepolia.",
+    "Trade SOL-PERP index-priced perpetual futures on Decant Protocol — on Solana, USDC-margined.",
   robots: { index: true, follow: true },
 };
 
@@ -32,7 +32,7 @@ export default function TradePage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
           <Link href="/" className="flex items-center gap-2">
             <Logo className="h-7 w-7" />
-            <span className="text-sm font-semibold tracking-tight">Decant</span>
+            <span className="text-sm font-semibold tracking-tight">Decant Protocol</span>
           </Link>
           <Link
             href="/"
@@ -44,7 +44,7 @@ export default function TradePage() {
         </div>
       </header>
       <main className="flex-1">
-        <TradeApp />
+        <SolanaTradeApp />
       </main>
       <Footer />
     </div>

@@ -1,0 +1,192 @@
+/* Scoped styles for the Solana /trade island. Everything lives under
+   `.solana-trade` so it never collides with the landing page's Tailwind. */
+.solana-trade {
+  --bg: #0a0b0d;
+  --panel: #14161a;
+  --panel2: #1b1e24;
+  --border: #262a31;
+  --text: #e7e9ee;
+  --muted: #8b90a0;
+  --green: #2ebd85;
+  --red: #f6465d;
+  --accent: #8a7cff;
+
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.solana-trade * { box-sizing: border-box; }
+.solana-trade a { color: var(--accent); }
+
+.solana-trade .top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.solana-trade .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+}
+.solana-trade .badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(138, 124, 255, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(138, 124, 255, 0.3);
+}
+.solana-trade .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .solana-trade .grid { grid-template-columns: 1fr; }
+}
+.solana-trade .card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+}
+.solana-trade .card h2 {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.solana-trade .statrow {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(38, 42, 49, 0.5);
+}
+.solana-trade .statrow:last-child { border-bottom: none; }
+.solana-trade .statrow .k { color: var(--muted); }
+.solana-trade .statrow .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+.solana-trade .big { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.solana-trade label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0 6px;
+}
+.solana-trade input {
+  width: 100%;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 11px 12px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.solana-trade .row { display: flex; gap: 10px; }
+.solana-trade .row > * { flex: 1; }
+.solana-trade button.act {
+  width: 100%;
+  border: none;
+  border-radius: 9px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 14px;
+  color: #fff;
+}
+.solana-trade button.act:disabled { opacity: 0.45; cursor: not-allowed; }
+.solana-trade .long { background: var(--green); }
+.solana-trade .short { background: var(--red); }
+.solana-trade .neutral { background: var(--accent); }
+.solana-trade .ghost {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.solana-trade .seg { display: flex; gap: 8px; margin-bottom: 6px; }
+.solana-trade .seg button {
+  flex: 1;
+  padding: 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 600;
+}
+.solana-trade .seg button.on.l {
+  background: rgba(46, 189, 133, 0.16);
+  color: var(--green);
+  border-color: var(--green);
+}
+.solana-trade .seg button.on.s {
+  background: rgba(246, 70, 93, 0.16);
+  color: var(--red);
+  border-color: var(--red);
+}
+.solana-trade .lev { display: flex; gap: 8px; margin-top: 6px; }
+.solana-trade .lev button {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--muted);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.solana-trade .lev button.on {
+  background: rgba(138, 124, 255, 0.16);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.solana-trade .pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; font-weight: 700; }
+.solana-trade .pill.l { background: rgba(46, 189, 133, 0.16); color: var(--green); }
+.solana-trade .pill.s { background: rgba(246, 70, 93, 0.16); color: var(--red); }
+.solana-trade .pos { color: var(--green); }
+.solana-trade .neg { color: var(--red); }
+.solana-trade .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+.solana-trade .toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  max-width: 90vw;
+  z-index: 50;
+}
+.solana-trade .banner {
+  background: rgba(246, 70, 93, 0.1);
+  border: 1px solid rgba(246, 70, 93, 0.3);
+  color: var(--red);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.solana-trade .banner.warn {
+  background: rgba(255, 196, 0, 0.08);
+  border-color: rgba(255, 196, 0, 0.3);
+  color: #ffce5a;
+}
+.solana-trade .wallet-adapter-button {
+  background: var(--accent) !important;
+  border-radius: 9px !important;
+  height: 38px !important;
+}

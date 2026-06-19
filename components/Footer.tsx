@@ -27,7 +27,7 @@ export function Footer() {
                 DECANT
               </div>
               <div className="text-[11px] text-ink-dim">
-                perpetual futures on Base
+                perpetual futures on Solana
               </div>
             </div>
           </div>

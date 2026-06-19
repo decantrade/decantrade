@@ -22,8 +22,8 @@ export function NetworkStatus() {
   const cards = [
     {
       label: "Network",
-      value: "Base",
-      sub: "chain id 8453",
+      value: "Solana",
+      sub: "devnet → mainnet",
       accent: "text-ink",
     },
     {
@@ -58,7 +58,7 @@ export function NetworkStatus() {
               Live readout
             </h2>
             <span className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">
-              [readout] base · testnet · pre-audit
+              [readout] solana · testnet · pre-audit
             </span>
           </div>
         </Reveal>
