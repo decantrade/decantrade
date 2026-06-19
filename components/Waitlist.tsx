@@ -324,7 +324,7 @@ export function Waitlist() {
             </h2>
             <p className="mt-6 max-w-md text-sm leading-7 text-ink-soft">
               The waitlist is gated. Paste a referral code from an existing
-              member and the form unlocks — finish in under a minute with a Base
+              member and the form unlocks — finish in under a minute with a
               wallet or an email.
             </p>
             <ul className="mt-8 space-y-3 text-[13px] text-ink-soft">
@@ -530,7 +530,7 @@ export function Waitlist() {
 
                     <p className="mt-3 text-[11px] leading-5 text-ink-dim">
                       {method === "wallet"
-                        ? "Coinbase Wallet · MetaMask — sign-only, no gas, never moves funds."
+                        ? "Wallet sign-only — no gas, never moves funds."
                         : "One confirmation email. No spam, no drips."}
                     </p>
                   </div>

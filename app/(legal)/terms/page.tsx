@@ -20,8 +20,8 @@ export default function TermsPage() {
 
       <h2>1. What Decant is today</h2>
       <p>
-        Decant is an early-stage project building a permissionless perpetual
-        futures protocol on the Base network. The Service available now is{" "}
+        Decant is an early-stage project building an index-priced perpetual
+        futures protocol on the Solana network. The Service available now is{" "}
         <strong>informational</strong> and provides an invite-gated waitlist.
         Any protocol functionality is pre-launch and, where available, runs on a{" "}
         <strong>test network using tokens that have no monetary value</strong>.

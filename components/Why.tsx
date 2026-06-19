@@ -16,11 +16,11 @@ export function Why() {
             <p className="mt-6 text-sm leading-7 text-ink-soft">
               To decant is to pour a liquid off its sediment — keeping the clear
               part, leaving the murk behind. That is the thesis: clean,
-              permissionless price discovery for any token on Base, without the
-              gatekeepers and opaque risk that muddy centralized venues.
+              index-priced perps on Solana, without the gatekeepers and opaque
+              risk that muddy centralized venues.
             </p>
             <p className="mt-4 text-sm leading-7 text-ink-soft">
-              Decant is an EVM-native perpetuals engine. Every market is
+              Decant is a Solana-native perpetuals engine. Every market is
               isolated, every position is on-chain, and the risk math is open
               for anyone to verify. No admin can freeze your collateral or
               single you out for forced closure.
@@ -40,11 +40,11 @@ export function Why() {
                 v: "Margin, funding and liquidation logic are on-chain and auditable.",
               },
               {
-                k: "No gatekeepers",
-                v: "Anyone can list a market. Anyone can provide liquidity. Anyone can trade.",
+                k: "Index-priced",
+                v: "PnL settles against a Pyth index price — no vAMM games, no oracle to game.",
               },
               {
-                k: "Built for Base",
+                k: "Built for Solana",
                 v: "Low fees and fast blocks make on-chain perps actually usable.",
               },
             ].map((row) => (

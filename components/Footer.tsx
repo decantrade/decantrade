@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
-import { TokenBadge } from "./TokenBadge";
 
 const SOCIALS = [
   { label: "X", href: "https://x.com/_decantrade" },
@@ -56,16 +55,9 @@ export function Footer() {
           </nav>
         </div>
 
-        <div className="mt-8 flex flex-col gap-2 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-[11px] uppercase tracking-[0.15em] text-ink-dim">
-            $DECANT token
-          </span>
-          <TokenBadge />
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 border-t border-line pt-6 text-[11px] text-ink-dim sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col gap-3 border-t border-line pt-6 text-[11px] text-ink-dim sm:flex-row sm:items-center sm:justify-between">
           <span className="uppercase tracking-[0.15em]">
-            testnet · pre-audit · not real money
+            devnet · pre-audit · not real money
           </span>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
             <span>

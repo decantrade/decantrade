@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 export const metadata: Metadata = {
   title: "Roadmap · Decant",
   description:
-    "Where Decant is today and where it's going: a live testnet on Base Sepolia, product polish, pre-mainnet hardening and audit, and the path to Base mainnet.",
+    "Where Decant is today and where it's going: a live devnet on Solana, product polish, pre-mainnet hardening and audit, and the path to Solana mainnet.",
   alternates: { canonical: "/roadmap" },
 };
 
@@ -62,19 +62,19 @@ export default function RoadmapPage() {
         <article className="mx-auto max-w-3xl px-5 py-16">
           <h1 className="text-3xl font-semibold tracking-tight">Roadmap</h1>
           <p className="mt-2 text-sm uppercase tracking-[0.15em] text-ink-dim">
-            Decant · perpetual futures on Base
+            Decant · perpetual futures on Solana
           </p>
           <p className="mt-5 text-ink-soft">
-            Permissionless perpetual futures on Base — anyone can launch a
-            leveraged market for any Base token in ~60 seconds, no gatekeeper.
-            Decant is <strong>live on testnet</strong> (Base Sepolia) today; the
-            path below leads to a hardened, audited mainnet.
+            Index-priced perpetual futures on Solana — trade SOL-PERP long or
+            short, USDC-margined and fully on-chain. Decant is{" "}
+            <strong>live on devnet</strong> today; the path below leads to a
+            hardened, audited mainnet.
           </p>
 
           <Phase
             status="done"
-            title="Phase 0 — Live on testnet"
-            blurb="The full product works end-to-end on Base Sepolia."
+            title="Phase 0 — Live on devnet"
+            blurb="The full product works end-to-end on Solana devnet."
             items={[
               {
                 head: "Landing + waitlist",
@@ -82,39 +82,19 @@ export default function RoadmapPage() {
               },
               {
                 head: "/trade terminal",
-                body: "ETH / BTC / SOL markets, candlestick charts, deposit & withdraw collateral, open/close long & short, up to 50× leverage.",
+                body: "SOL-PERP market, deposit & withdraw USDC collateral, open/close long & short, up to 20× leverage.",
               },
               {
-                head: "Permissionless market factory",
-                body: "Launch a new perp market for any Base token via Pyth feed or Uniswap V3 TWAP.",
+                head: "Anchor program (Solana devnet)",
+                body: "Index-priced perp engine — deposit, open/close, liquidate, withdraw — with isolated margin and a per-market insurance fund.",
               },
               {
-                head: "Smart contracts (Base Sepolia)",
-                body: "vAMM PerpMarket + MarketFactory, Pyth oracle with Uniswap V3 TWAP fallback, isolated margin & per-market insurance fund.",
-              },
-              {
-                head: "Keeper bot",
-                body: "Cloudflare Cron Worker auto-settles funding and liquidates under-margin positions every minute.",
-              },
-              {
-                head: "Indexer + history",
-                body: "On-chain activity, cross-market positions and a global leaderboard.",
+                head: "Pyth oracle + keeper",
+                body: "A keeper pushes the latest Pyth SOL/USD price on-chain and liquidates under-margin positions.",
               },
               {
                 head: "Wallets",
-                body: "WalletConnect with mobile QR / deep-link support.",
-              },
-            ]}
-          />
-
-          <Phase
-            status="now"
-            title="Token — $DECANT"
-            blurb="The community token for Decant, live on Base."
-            items={[
-              {
-                head: "$DECANT live on Bankr",
-                body: "The $DECANT token is live and tradable on Bankr. Contract: 0x10feE05Ef916625FD86b2fED432e325bE897BBa3 (Base) — only trust the address shown on decantrade.com.",
+                body: "Phantom and Solflare via the Solana wallet adapter.",
               },
             ]}
           />
@@ -122,11 +102,11 @@ export default function RoadmapPage() {
           <Phase
             status="next"
             title="Phase 1 — Polish & traction"
-            blurb="Make the testnet feel like a real product and bring in early traders. Low-risk, no mainnet funds at stake."
+            blurb="Make the devnet feel like a real product and bring in early traders. Low-risk, no mainnet funds at stake."
             items={[
               {
                 head: "Trading UX",
-                body: "Liquidation price & funding rate on each position, pre-trade slippage / price-impact preview, full cross-market history, clearer tx notifications.",
+                body: "Liquidation price on each position, live index updates, position history, clearer tx notifications.",
               },
               {
                 head: "Growth & trust",
@@ -146,11 +126,11 @@ export default function RoadmapPage() {
             items={[
               {
                 head: "Exhaustive testing",
-                body: "Foundry unit + invariant / fuzz tests across margin, funding, liquidation, ADL and the insurance fund.",
+                body: "Anchor unit + invariant tests across margin, liquidation, the solvency invariant and the insurance fund.",
               },
               {
                 head: "Economic simulation",
-                body: "Stress-test funding, bad-debt scenarios and oracle manipulation on thin long-tail markets; tune risk parameters.",
+                body: "Stress-test bad-debt scenarios and oracle / keeper failure modes; tune leverage and risk-cap parameters.",
               },
               {
                 head: "Bug bounty + audit",
@@ -161,12 +141,12 @@ export default function RoadmapPage() {
 
           <Phase
             status="later"
-            title="Phase 3 — Base mainnet"
+            title="Phase 3 — Solana mainnet"
             blurb="Ship to production, gradually and safely."
             items={[
               {
                 head: "Staged launch",
-                body: "Start with small position / TVL caps and raise them over time.",
+                body: "Start with small deposit / open-interest caps and raise them over time.",
               },
               {
                 head: "Real economics",
@@ -186,16 +166,17 @@ export default function RoadmapPage() {
               and invariant testing are non-negotiable before mainnet.
             </li>
             <li>
-              <strong>Oracle manipulation</strong> on thin long-tail markets —
-              mitigated by minimum liquidity, long TWAP windows and leverage caps
-              on new markets.
+              <strong>Oracle / keeper risk</strong> — the index is pushed
+              on-chain by a keeper; mitigated by leverage caps, deposit / OI
+              caps and moving toward reading Pyth on-chain.
             </li>
             <li>
               <strong>Bad debt</strong> on price gaps — absorbed by the
-              per-market insurance fund and auto-deleveraging.
+              per-market insurance fund, with payouts capped by available
+              capital.
             </li>
             <li>
-              <strong>Regulation</strong> — testnet-only with disclaimers for
+              <strong>Regulation</strong> — devnet-only with disclaimers for
               now; legal review before mainnet.
             </li>
           </ul>

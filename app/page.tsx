@@ -1,7 +1,6 @@
 import { Marquee } from "@/components/Marquee";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
-import { TokenBanner } from "@/components/TokenBadge";
 import { HowItWorks } from "@/components/HowItWorks";
 import { NetworkStatus } from "@/components/NetworkStatus";
 import { Why } from "@/components/Why";
@@ -16,7 +15,6 @@ export default function Home() {
       <Marquee />
       <main className="flex-1">
         <Hero />
-        <TokenBanner />
         <HowItWorks />
         <NetworkStatus />
         <Why />

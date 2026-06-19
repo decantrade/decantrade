@@ -1,12 +1,12 @@
 const ITEMS = [
-  "deploy in 60 seconds",
-  "permissionless perps",
-  "built on base",
-  "no governance. no gatekeepers",
+  "SOL-PERP",
+  "index-priced perps",
+  "built on solana",
+  "USDC-margined",
+  "isolated margin",
   "insurance fund on every market",
-  "coin-margined",
   "don't trust, verify",
-  "testnet — not real money",
+  "devnet — not real money",
 ];
 
 export function Marquee() {

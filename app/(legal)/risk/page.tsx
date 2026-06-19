@@ -35,12 +35,14 @@ export default function RiskPage() {
         afford to lose.
       </p>
 
-      <h2>3. Permissionless markets</h2>
+      <h2>3. Index pricing &amp; counterparty risk</h2>
       <p>
-        Decant is designed so that anyone can create a market for any token.
-        Markets are <strong>not vetted or endorsed</strong> by us. Tokens may be
-        illiquid, manipulated, or worthless. The existence of a market implies
-        nothing about its quality or safety.
+        PnL settles against an <strong>index price</strong> sourced from Pyth
+        and pushed on-chain by a keeper. The protocol itself is your{" "}
+        <strong>counterparty</strong> (the house): winning positions are paid
+        from the market&apos;s insurance fund and collateral, and payouts are
+        <strong> capped by the capital the market holds</strong>. Oracle or
+        keeper failure can cause mispricing or delayed liquidation.
       </p>
 
       <h2>4. Smart contract &amp; technology risk</h2>
