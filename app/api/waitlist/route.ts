@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { verifyMessage } from "viem";
+import nacl from "tweetnacl";
+import bs58 from "bs58";
+import { PublicKey } from "@solana/web3.js";
 import { sql } from "@/lib/db";
 import {
   generateCode,
   isValidCodeFormat,
   isValidEmail,
-  isValidEvmAddress,
+  isValidSolanaAddress,
   normalizeCode,
   normalizeHandle,
 } from "@/lib/referral";
@@ -118,13 +120,13 @@ export async function POST(request: Request) {
   let email: string | null = null;
 
   if (method === "wallet") {
-    if (typeof body.walletAddress !== "string" || !isValidEvmAddress(body.walletAddress)) {
+    if (typeof body.walletAddress !== "string" || !isValidSolanaAddress(body.walletAddress)) {
       return bad("invalid_address");
     }
     if (typeof body.signature !== "string" || typeof body.message !== "string") {
       return bad("missing_signature");
     }
-    walletAddress = body.walletAddress.toLowerCase();
+    walletAddress = body.walletAddress;
 
     // message must reference this address + code, then verify the signature
     if (
@@ -133,20 +135,20 @@ export async function POST(request: Request) {
     ) {
       return bad("message_mismatch");
     }
+    // ed25519 signature over the UTF-8 message, against the wallet's public key
     let valid = false;
     try {
-      valid = await verifyMessage({
-        address: body.walletAddress as `0x${string}`,
-        message: body.message,
-        signature: body.signature as `0x${string}`,
-      });
+      const pubkey = new PublicKey(body.walletAddress).toBytes();
+      const sig = bs58.decode(body.signature);
+      const msg = new TextEncoder().encode(body.message);
+      valid = nacl.sign.detached.verify(msg, sig, pubkey);
     } catch {
       valid = false;
     }
     if (!valid) return bad("bad_signature");
 
     const existing = await sql`
-      SELECT id FROM decant_waitlist WHERE lower(wallet_address) = ${walletAddress} LIMIT 1
+      SELECT id FROM decant_waitlist WHERE wallet_address = ${walletAddress} LIMIT 1
     `;
     if (existing.length > 0) {
       const id = (existing[0] as { id: number }).id;
