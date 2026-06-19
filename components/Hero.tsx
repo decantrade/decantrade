@@ -17,7 +17,7 @@ export function Hero() {
         <Reveal>
           <div className="mb-7 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ink-dim">
             <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green" />
-            <span className="text-green">live on testnet</span>
+            <span className="text-green">live on devnet</span>
             <span className="text-line">/</span>
             <span>audit before mainnet</span>
           </div>
