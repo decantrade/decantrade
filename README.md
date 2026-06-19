@@ -1,11 +1,11 @@
 <div align="center">
 
-<img src="public/brand/decant-banner.png" alt="Decant — permissionless perpetual futures on Base" width="100%" />
+<img src="public/brand/decant-banner.png" alt="Decant — index-priced perpetual futures on Solana" width="100%" />
 
 # Decant
 
-**Permissionless perpetual futures on [Base](https://base.org).**
-Launch a leveraged market on any Base token in ~60 seconds — no listing committees, no gatekeepers.
+**Index-priced perpetual futures on [Solana](https://solana.com).**
+Trade SOL-PERP long or short with leverage — USDC-margined, fully on-chain. PnL settles against a Pyth index price, with isolated margin and a per-market insurance fund.
 
 [decantrade.com](https://decantrade.com) · [@_decantrade](https://x.com/_decantrade)
 
@@ -13,23 +13,18 @@ Launch a leveraged market on any Base token in ~60 seconds — no listing commit
 
 ---
 
-> **Status:** Pre-launch. This repository contains the marketing landing page and the
-> invite-gated waitlist app. The trading protocol itself runs on a test network and uses
-> tokens with no monetary value. Nothing here is financial advice. See [/risk](https://decantrade.com/risk).
-
-## Token
-
-**$DECANT** · Base · [`0x10feE05Ef916625FD86b2fED432e325bE897BBa3`](https://basescan.org/token/0x10feE05Ef916625FD86b2fED432e325bE897BBa3)
-
-Live and tradable on **Bankr**. Always verify the contract address against [decantrade.com](https://decantrade.com) — beware of impersonators.
+> **Status:** Guarded launch on **Solana devnet**. This repository contains the marketing
+> landing page and the invite-gated waitlist app. The trading protocol runs on a test
+> network and uses test USDC with no monetary value. Nothing here is financial advice.
+> See [/risk](https://decantrade.com/risk).
 
 ## Demo
 
-A full trade on testnet, end-to-end: connect wallet → deposit collateral → open a leveraged long → see it on the leaderboard → close. Every step is a real on-chain transaction on Base Sepolia.
+The trade flow end-to-end: connect a wallet → deposit USDC → open a leveraged position → close & settle, every step a real on-chain transaction. Try it live on **Solana devnet** at [decantrade.com/trade](https://decantrade.com/trade).
 
-[![Watch the Decant testnet demo](docs/screenshots/trade.png)](https://github.com/decantrade/decantrade/blob/main/docs/demo.mp4)
+[![Watch the Decant trade demo](docs/screenshots/trade.png)](https://github.com/decantrade/decantrade/blob/main/docs/demo.mp4)
 
-▶ **[Watch the demo](https://github.com/decantrade/decantrade/blob/main/docs/demo.mp4)** (39s) — or grab the [raw file](https://github.com/decantrade/decantrade/raw/main/docs/demo.mp4).
+▶ **[Watch the demo](https://github.com/decantrade/decantrade/blob/main/docs/demo.mp4)** (39s, earlier testnet recording) — or grab the [raw file](https://github.com/decantrade/decantrade/raw/main/docs/demo.mp4).
 
 ## Screenshots
 
@@ -43,7 +38,7 @@ This is the **landing + waitlist** application:
 
 - A dark, terminal-styled marketing site for Decant.
 - An **invite-only waitlist** gated behind 8-character referral codes.
-- Sign up with a **Base wallet** (sign-only, gas-free proof of ownership) or an **email**.
+- Sign up with a **Solana wallet** (Phantom/Solflare — sign-only, gas-free proof of ownership) or an **email**.
 - A password-gated **admin dashboard** to view and export signups.
 - Deployed to **Cloudflare Workers** via the OpenNext adapter, backed by **Neon Postgres**.
 
@@ -51,7 +46,7 @@ This is the **landing + waitlist** application:
 
 - **Invite-gated waitlist** — the form stays locked until a valid referral code is entered.
 - **Referral mechanics** — every signup mints 3 fresh invite codes (3 uses each) so access spreads virally. Seed codes are issued with 100 uses each.
-- **Two join methods** — connect a Base wallet and sign a message, or join with email. Optional X handle.
+- **Two join methods** — connect a Solana wallet (Phantom/Solflare) and sign a message, or join with email. Optional X handle.
 - **Confirmation email** — email signups get a queue-position + invite-codes email via Resend (optional; skipped when no API key is configured).
 - **Anti-bot** — per-IP, database-backed rate limiting plus a honeypot field on the public endpoints.
 - **Admin dashboard** — `/admin`, gated by a server-side token, with CSV export of all signups.
@@ -65,7 +60,7 @@ This is the **landing + waitlist** application:
 | Framework    | [Next.js 16](https://nextjs.org) (App Router) + React 19          |
 | Language     | TypeScript                                                        |
 | Styling      | Tailwind CSS, [Motion](https://motion.dev) for animation          |
-| Wallet       | [wagmi](https://wagmi.sh) + [viem](https://viem.sh) (Base, chain 8453) |
+| Wallet       | [Solana wallet-adapter](https://github.com/anza-xyz/wallet-adapter) + [web3.js](https://solana.com/docs/clients/javascript) + [Anchor](https://www.anchor-lang.com) (Phantom/Solflare, devnet) |
 | Database     | PostgreSQL — `postgres` (TCP) locally, [Neon](https://neon.tech) serverless (HTTP) on Workers |
 | Hosting      | [Cloudflare Workers](https://workers.cloudflare.com) via [OpenNext](https://opennext.js.org/cloudflare) |
 | Package mgr  | pnpm                                                              |
@@ -97,7 +92,7 @@ lib/
   db.ts               Lazy dual-driver SQL client
   referral.ts         Code generation/validation, message builder, validators
   ratelimit.ts        Per-IP fixed-window rate limiter (Postgres-backed)
-  wagmi.ts            wagmi/viem config (Base)
+  solana/             Solana program client (IDL, PDAs, AnchorProvider)
 scripts/
   init-db.ts          Creates tables and seeds invite codes
 public/brand/         Logo, avatar, OG image, banner
@@ -171,7 +166,7 @@ Codes are 8 characters from the charset `0123456789ABCDEFGHJKMNPQRSTVWXYZ`
 ### Waitlist flow
 
 1. Visitor enters a referral code → `/api/referral` validates it and the form unlocks.
-2. They join with a wallet (sign a message proving ownership — no gas, never moves funds) or an email.
+2. They join with a Solana wallet (sign a message with the wallet's ed25519 key proving ownership — no gas, never moves funds) or an email.
 3. On success they get a queue position and **3 new invite codes** to share.
 
 ## Deploy (Cloudflare Workers)
@@ -205,42 +200,48 @@ against your Neon database before the first deploy.
 | `pnpm cf:deploy`  | Build and deploy to Cloudflare Workers.              |
 | `pnpm cf:typegen` | Regenerate Cloudflare binding types.                 |
 
-## Smart contracts
+## On-chain program (Solana)
 
-The on-chain perp engine lives in [`contracts/`](contracts/) — a [Foundry](https://book.getfoundry.sh)
-project deployed to **Base Sepolia** (chain `84532`).
+The perp engine is an **[Anchor](https://www.anchor-lang.com) program** deployed to **Solana devnet**.
+It is **index-priced**: there is no vAMM or order book — PnL is computed directly from a Pyth
+index price (`size × (exit − entry) / entry`), the protocol is the counterparty (the house),
+and payouts are backed by each market's isolated insurance fund.
 
-- `PerpMarket` — vAMM (`x·y=k`), isolated margin, funding, liquidation, and a per-market insurance fund.
-- `MarketFactory` — permissionless market creation: `createPythMarket` (curated feeds) and
-  `createTwapMarket` (any token with a Uniswap V3 pool, via a TWAP fallback oracle).
-- `PythOracle` + `UniswapV3TwapOracle` — index pricing.
+- **Instructions** — `initialize_market`, `deposit`, `open_position`, `close_position`,
+  `liquidate`, `withdraw`, `push_price` (keeper index push), `add_insurance`.
+- **Margin** — isolated, single-collateral (**USDC**, 6 decimals), one position per trader per market.
+- **Guardrails (guarded launch)** — max leverage capped (20× MVP), per-wallet deposit caps and
+  per-market open-interest caps, maintenance-margin liquidation.
 
-`forge-std` is vendored as a git submodule, so clone with submodules:
+Deployed addresses (devnet):
 
-```bash
-git clone --recurse-submodules <repo-url>
-# or, in an existing clone:
-git submodule update --init --recursive
+| Account | Address |
+| --- | --- |
+| Program | [`EAYBRfX1Q5ExvAVwGrM4k4eGnTPTvXhJnVFLaaTFsi5t`](https://explorer.solana.com/address/EAYBRfX1Q5ExvAVwGrM4k4eGnTPTvXhJnVFLaaTFsi5t?cluster=devnet) |
+| SOL-PERP market #1 (PDA) | [`3qN4ppMd4tEjPfRhkE9ChivL3e5Em8mNsNGYNPY1aV5G`](https://explorer.solana.com/address/3qN4ppMd4tEjPfRhkE9ChivL3e5Em8mNsNGYNPY1aV5G?cluster=devnet) |
+| Test USDC (devUSDC, 6 dec) | [`3HqzE8KthdmpwrGqVkqdgoNJEQuiECVLEFxsY1mkPkwA`](https://explorer.solana.com/address/3HqzE8KthdmpwrGqVkqdgoNJEQuiECVLEFxsY1mkPkwA?cluster=devnet) |
 
-cd contracts
-forge build
-forge test
-```
+The web client wires to the program through [`lib/solana/`](lib/solana/) (IDL + PDAs) and the
+Solana trade UI under [`components/trade/solana/`](components/trade/solana/) (Phantom/Solflare
+via wallet-adapter). More detail is on [decantrade.com/docs](https://decantrade.com/docs).
 
-Deployed addresses are listed in [`contracts/deployments/base-sepolia.md`](contracts/deployments/base-sepolia.md).
+## Keeper
 
-## Keeper & indexer
+An off-chain keeper keeps each market healthy: it pushes the latest **Pyth** index price on-chain
+(`push_price`) every ~15 seconds and **liquidates** under-margined positions (`liquidate`), which
+is permissionless. So marks track the real market and underwater positions get force-closed even
+when nobody is trading.
 
-Off-chain infrastructure that keeps the markets healthy:
+## Legacy (Base)
 
-- [`keeper/`](keeper/) — a Node keeper + **SQLite event indexer** + read API. It backfills and
-  follows `PerpMarket` events, liquidates under-margined positions, and settles funding.
-- [`keeper-worker/`](keeper-worker/) — the same keeper logic packaged as a **Cloudflare Cron
-  Worker** (no always-on server). On a schedule it settles funding and liquidates under-margined
-  positions, tracking open positions in Workers KV. This is what runs against the live Base
-  Sepolia markets. See [`keeper-worker/README.md`](keeper-worker/README.md).
+The original Base EVM implementation is retained for reference and is **superseded by the Solana
+program above**:
 
-Both calls (`settleFunding`, `liquidate`) are permissionless, so the keeper only needs gas.
+- [`contracts/`](contracts/) — Foundry/Solidity vAMM perp + permissionless `MarketFactory`,
+  deployed to Base Sepolia (see [`contracts/deployments/base-sepolia.md`](contracts/deployments/base-sepolia.md)).
+- [`keeper/`](keeper/) and [`keeper-worker/`](keeper-worker/) — the Base (viem) keeper + event indexer.
+
+These are no longer the live system and are not deployed to Solana.
 
 ## Disclaimer
 
