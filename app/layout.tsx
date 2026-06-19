@@ -52,6 +52,9 @@ export const metadata: Metadata = {
     creator: "@_decantrade",
     images: ["/brand/decant-og.png"],
   },
+  other: {
+    "ory-verify": "orynth-68e921ec4bdd415d8cef5b3e32e6de3e",
+  },
 };
 
 const jsonLd = {
